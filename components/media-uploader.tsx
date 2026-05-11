@@ -49,6 +49,7 @@ export function MediaUploader({
   const [serviceType, setServiceType] = useState(
     availableServiceOptions[0] ?? "Countertop installation"
   );
+  const [projectDate, setProjectDate] = useState("");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [message, setMessage] = useState("");
@@ -106,6 +107,7 @@ export function MediaUploader({
           state,
           materialType,
           serviceType,
+          projectDate,
           notes
         })
       });
@@ -129,6 +131,7 @@ export function MediaUploader({
       }
       setFiles([]);
       setNotes("");
+      setProjectDate("");
     } catch {
       setStatus("error");
       setMessage("Could not register the upload. Check required fields and try again.");
@@ -149,6 +152,11 @@ export function MediaUploader({
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
               Add one or many photos, tag the city, material, and service, then
               DreamGrowth can turn them into local post drafts.
+            </p>
+            <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-muted-foreground">
+              DreamGrowth saves the project record and file reference locally in
+              this workspace for now. Keep the original photo available for
+              manual posting until shared media storage is added.
             </p>
           </div>
           <Badge variant="success">Local media library ready</Badge>
@@ -216,6 +224,17 @@ export function MediaUploader({
                 onChange={setServiceType}
                 options={availableServiceOptions}
               />
+              <label className="block">
+                <span className="text-xs font-bold uppercase text-muted-foreground">
+                  Project Date
+                </span>
+                <input
+                  type="date"
+                  value={projectDate}
+                  onChange={(event) => setProjectDate(event.target.value)}
+                  className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+              </label>
             </div>
 
             <label className="block">
@@ -321,6 +340,9 @@ export function MediaUploader({
                     <div>
                       {upload.serviceType} in {upload.city}, {upload.state}
                     </div>
+                    {upload.projectDate ? (
+                      <div>Project date: {upload.projectDate}</div>
+                    ) : null}
                     <div>
                       Added {new Date(upload.createdAt).toLocaleDateString("en-US", {
                         month: "short",

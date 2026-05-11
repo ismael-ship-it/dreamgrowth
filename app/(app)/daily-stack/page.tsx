@@ -218,6 +218,16 @@ function buildHero(result: DailyStackResult) {
         secondaryLabel: "Review Settings",
         secondaryHref: "/settings"
       };
+    case "google_sync_blocked":
+      return {
+        title: "Fix the Google sync blocker first",
+        body:
+          "DreamGrowth found a real Google-side blocker during sync. Daily Stack is intentionally pausing live review and post work until that external setup issue is resolved.",
+        primaryLabel: "Open Connect",
+        primaryHref: "/connect",
+        secondaryLabel: "Open Google Business",
+        secondaryHref: "/google-business"
+      };
     case "google_live":
       return {
         title:
@@ -266,6 +276,16 @@ function buildSetupAlert(result: DailyStackResult) {
         primaryHref: "/google-business",
         secondaryLabel: "Review Settings",
         secondaryHref: "/settings"
+      };
+    case "google_sync_blocked":
+      return {
+        title: "A real Google blocker is holding back live tasks",
+        body:
+          "The Google account is connected, but the first sync is failing for an external Google-side reason. Fix that blocker first so Daily Stack can move from setup guidance to real review and post work.",
+        primaryLabel: "Open Connect",
+        primaryHref: "/connect",
+        secondaryLabel: "Open Google Business",
+        secondaryHref: "/google-business"
       };
     case "google_live":
       return null;

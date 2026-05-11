@@ -3,6 +3,10 @@ import OpenAI from "openai";
 import { getAppReadiness } from "@/lib/app-readiness";
 import { getCompanyProfile } from "@/lib/company/profile";
 import { getOptionalEnv } from "@/lib/env";
+import {
+  getGoogleSyncDiagnostic,
+  getGoogleSyncDiagnosticTitle
+} from "@/lib/google/sync-diagnostics";
 import { getGoogleIntegrationSummary } from "@/lib/google/service";
 import { getMeaningfulConnectionName } from "@/lib/integrations/display-name";
 import { getMetaIntegrationSummary } from "@/lib/meta/service";
@@ -163,6 +167,7 @@ function getDirectConnectionReply(
   readiness: ReturnType<typeof getAppReadiness>
 ) {
   const normalized = message.toLowerCase();
+  const googleSyncDiagnostic = getGoogleSyncDiagnostic(readiness.google);
 
   if (
     normalized.includes("google") &&
@@ -174,6 +179,16 @@ function getDirectConnectionReply(
   ) {
     if (readiness.google.isConnected) {
       const connectedAs = getMeaningfulConnectionName(readiness.google.displayName);
+
+      if (googleSyncDiagnostic) {
+        return `Si. Google ya esta conectada${
+          connectedAs ? ` como ${connectedAs}` : ""
+        }, pero el primer sync esta bloqueado por Google. ${
+          getGoogleSyncDiagnosticTitle(googleSyncDiagnostic) ??
+          "Google sync needs attention"
+        }: ${googleSyncDiagnostic.hint}`;
+      }
+
       return `Si. Google ya esta conectada${
         connectedAs ? ` como ${connectedAs}` : ""
       }. ${
@@ -263,7 +278,8 @@ function buildTrustedWorkspaceContext(context: ChatWorkspaceContext) {
         connectedAs: getMeaningfulConnectionName(
           context.readiness.google.displayName
         ),
-        lastSyncAt: context.readiness.google.lastSyncAt
+        lastSyncAt: context.readiness.google.lastSyncAt,
+        syncDiagnostic: getGoogleSyncDiagnostic(context.readiness.google)
       },
       meta: {
         credentialsConfigured: context.readiness.metaCredentialsReady,
@@ -523,10 +539,14 @@ function getGroundedFallbackAnswerSpanish(
     }
 
     if (!context.readiness.google.metadata.liveSync) {
+      const googleSyncDiagnostic = getGoogleSyncDiagnostic(context.readiness.google);
+
       return [
         "Esto es lo real en DreamGrowth ahora mismo:",
         "- Ya hay una cuenta Google conectada, pero todavia no existe el primer live sync completo de Google Business.",
-        "- El siguiente paso correcto es abrir Google Business y correr Sync Google ahora.",
+        googleSyncDiagnostic
+          ? `- El siguiente paso correcto es resolver este bloqueo de Google: ${googleSyncDiagnostic.hint}`
+          : "- El siguiente paso correcto es abrir Google Business y correr Sync Google ahora.",
         "- Despues de eso, DreamGrowth podra mostrar ubicaciones, resenas y drafts basados en datos reales.",
         "- Google Ads, GA4 y Search Console siguen pendientes y no deben tratarse como datos confirmados."
       ].join("\n");
@@ -580,10 +600,14 @@ function getTodayFallback(context: ChatWorkspaceContext) {
   }
 
   if (!context.readiness.google.metadata.liveSync) {
+    const googleSyncDiagnostic = getGoogleSyncDiagnostic(context.readiness.google);
+
     return [
       "Here is the next operator move based on the current workspace:",
       "- A Google account is connected, but there is no completed live Google Business sync yet.",
-      "- Run the first Google sync to confirm the correct account, locations, and review footprint.",
+      googleSyncDiagnostic
+        ? `- Fix this Google-side blocker first: ${googleSyncDiagnostic.hint}`
+        : "- Run the first Google sync to confirm the correct account, locations, and review footprint.",
       "- Once that data lands, start with one review reply and one Google post draft based on the synced workspace.",
       "- Do not treat Ads, GA4, or Search Console performance as fact yet because those live sync layers are still pending."
     ].join("\n");
@@ -656,10 +680,14 @@ function getWeeklyWinsFallback(context: ChatWorkspaceContext) {
     ].join("\n");
   }
 
+  const googleSyncDiagnostic = getGoogleSyncDiagnostic(context.readiness.google);
+
   return [
     "There is not a trustworthy weekly win report yet.",
     "- A Google account is connected, but the first live Google Business sync has not completed.",
-    "- Finish the first sync, verify the locations and reviews that land in the workspace, and then the weekly readout can use real data.",
+    googleSyncDiagnostic
+      ? `- Fix the current Google-side blocker first: ${googleSyncDiagnostic.hint}`
+      : "- Finish the first sync, verify the locations and reviews that land in the workspace, and then the weekly readout can use real data.",
     "- I will not treat guided sample totals for ads, calls, clicks, reviews, or posts as facts."
   ].join("\n");
 }
@@ -719,7 +747,10 @@ function getGoogleWorkspaceStatus(context: ChatWorkspaceContext) {
   }
 
   if (!context.readiness.google.metadata.liveSync) {
-    return "a Google account is connected, but there is no completed live Google Business sync yet.";
+    const googleSyncDiagnostic = getGoogleSyncDiagnostic(context.readiness.google);
+    return googleSyncDiagnostic
+      ? `a Google account is connected, but sync is blocked: ${googleSyncDiagnostic.hint}`
+      : "a Google account is connected, but there is no completed live Google Business sync yet.";
   }
 
   return `Google Business live sync is active with ${getGoogleLocationCount(
@@ -735,7 +766,10 @@ function getGoogleWorkspaceStatusSpanish(context: ChatWorkspaceContext) {
   }
 
   if (!context.readiness.google.metadata.liveSync) {
-    return "hay una cuenta Google conectada, pero todavia no existe un live sync completo de Google Business.";
+    const googleSyncDiagnostic = getGoogleSyncDiagnostic(context.readiness.google);
+    return googleSyncDiagnostic
+      ? `hay una cuenta Google conectada, pero el sync esta bloqueado: ${googleSyncDiagnostic.hint}`
+      : "hay una cuenta Google conectada, pero todavia no existe un live sync completo de Google Business.";
   }
 
   return `Google Business ya tiene live sync con ${getGoogleLocationCount(

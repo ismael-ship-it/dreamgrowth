@@ -3,6 +3,10 @@ import type {
   GoogleBusinessReview,
   GoogleIntegrationSummary
 } from "@/lib/google/types";
+import {
+  getGoogleSyncDiagnostic,
+  getGoogleSyncDiagnosticTitle
+} from "@/lib/google/sync-diagnostics";
 import { getMeaningfulConnectionName } from "@/lib/integrations/display-name";
 import type { IntegrationConnection } from "@/lib/integrations/store";
 import type { MetaIntegrationSummary } from "@/lib/meta/types";
@@ -79,6 +83,7 @@ export type DailyStackResult = {
   mode:
     | "google_not_connected"
     | "google_scope_needed"
+    | "google_sync_blocked"
     | "google_sync_needed"
     | "google_live";
   tasks: GrowthTask[];
@@ -453,6 +458,69 @@ export function buildOperatorDailyStack(
   }
 
   if (!context.googleLiveSync) {
+    const googleSyncDiagnostic = getGoogleSyncDiagnostic(input.googleConnection);
+
+    if (googleSyncDiagnostic) {
+      return {
+        mode: "google_sync_blocked",
+        tasks: rankTasks([
+          createSetupTask({
+            id: "google-sync-blocked",
+            taskType: "google_sync",
+            title:
+              getGoogleSyncDiagnosticTitle(googleSyncDiagnostic) ??
+              "Fix the Google sync blocker",
+            reason: googleSyncDiagnostic.message,
+            suggestedAction: googleSyncDiagnostic.hint,
+            impactScore: 95,
+            urgencyScore: 93,
+            confidenceScore: 99,
+            sourcePlatform: "google_business",
+            relatedRecordId: `google-sync-blocked-${googleSyncDiagnostic.reason}`,
+            estimatedTimeMinutes: 5,
+            statusLabel: "Blocked externally",
+            actionLabel: "Open connection help",
+            actionHref: "/connect",
+            secondaryActionLabel: "Open Google Business",
+            secondaryActionHref: "/google-business",
+            deliveryMode: "setup",
+            disclaimer:
+              "DreamGrowth is holding back review and post work until this external Google blocker is resolved and a live sync succeeds."
+          }),
+          createSetupTask({
+            id: "google-review-blocker-details",
+            taskType: "location_verification",
+            title: "Review the exact Google blocker details",
+            reason:
+              `Current sync stage: ${googleSyncDiagnostic.stage}. Google returned status ${googleSyncDiagnostic.status ?? "unknown"} for this workspace.`,
+            suggestedAction:
+              googleSyncDiagnostic.helpUrl
+                ? "Use the Google API setup link inside Connect or Google Business, then retry the sync."
+                : "Use the Connect page to review the blocker details, then retry the sync once the Google-side setup is fixed.",
+            impactScore: 82,
+            urgencyScore: 79,
+            confidenceScore: 98,
+            sourcePlatform: "google_business",
+            relatedRecordId: "google-review-blocker-details",
+            estimatedTimeMinutes: 3,
+            statusLabel: "Needs owner attention",
+            actionLabel: "Open Connect",
+            actionHref: "/connect",
+            secondaryActionLabel: "Open Google Business",
+            secondaryActionHref: "/google-business",
+            deliveryMode: "setup",
+            disclaimer:
+              "This is still setup work. No Google Business review or post should be treated as live until the sync succeeds."
+          }),
+          createPendingLaneTask(context)
+        ]),
+        note:
+          "Google is connected, but a real Google-side blocker is preventing the first sync. Daily Stack is surfacing the fix instead of pretending the live operator queue exists already.",
+        approvalRule: DEFAULT_APPROVAL_RULE,
+        summary
+      };
+    }
+
     return {
       mode: "google_sync_needed",
       tasks: rankTasks([

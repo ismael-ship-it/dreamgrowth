@@ -182,13 +182,20 @@ export function ReviewsWorkspace({
                         {review.rating} stars
                       </Badge>
                       <Badge variant="outline">{review.reviewerName}</Badge>
+                      {review.rating <= 3 ? (
+                        <Badge variant="warning">Manual rewrite recommended</Badge>
+                      ) : (
+                        <Badge variant="secondary">Starter response ready</Badge>
+                      )}
                     </div>
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">
                       {review.comment}
                     </p>
                     <div className="mt-4 rounded-md bg-muted p-3">
                       <div className="text-xs font-bold uppercase text-muted-foreground">
-                        Draft response
+                        {review.rating <= 3
+                          ? "Starter response to rewrite"
+                          : "Starter response"}
                       </div>
                       <p className="mt-2 text-sm font-semibold leading-6">
                         {review.responseDraft}

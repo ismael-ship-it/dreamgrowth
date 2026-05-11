@@ -120,7 +120,7 @@ export function IntegrationsSettings({
           provider="google"
           title="Google"
           icon={Store}
-          description="Reviews, Google Business Profile, Google Ads, GA4, and Search Console."
+          description="Connect once for Google Business now. Google Ads, GA4, and Search Console stay planned until their dedicated live syncs are built."
           recommended
           credentialsReady={readiness.googleCredentialsReady}
           connection={readiness.google}

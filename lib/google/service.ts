@@ -494,7 +494,7 @@ function buildGoogleSummary(input: {
     rating: review.rating,
     comment: review.comment,
     sentiment: mapReviewSentiment(review.rating),
-    responseDraft: `Thank you for choosing ${input.companyName}. We appreciate you taking the time to share your feedback.`,
+    responseDraft: buildReviewResponseDraft(review, input.companyName),
     responseStatus: "draft",
     createdAt: review.createdAt.slice(0, 10)
   }));
@@ -591,6 +591,22 @@ function mapReviewSentiment(rating: number) {
   if (rating >= 5) return "positive" as const;
   if (rating >= 3) return "neutral" as const;
   return "negative" as const;
+}
+
+function buildReviewResponseDraft(review: GoogleReview, companyName: string) {
+  if (review.rating <= 2) {
+    return `Hi ${review.reviewerName}, thank you for the feedback. We are sorry this experience did not meet expectations. Please review the job details carefully and rewrite this response before posting from ${companyName}.`;
+  }
+
+  if (review.rating === 3) {
+    return `Hi ${review.reviewerName}, thank you for sharing your feedback. We appreciate the chance to keep improving and would review the job details before posting this response from ${companyName}.`;
+  }
+
+  if (review.rating === 4) {
+    return `Hi ${review.reviewerName}, thank you for your feedback and for choosing ${companyName}. We are glad the project went well and appreciate you taking the time to share your experience.`;
+  }
+
+  return `Hi ${review.reviewerName}, thank you for choosing ${companyName}. We really appreciate the review and are glad you had a positive experience with the project.`;
 }
 
 function isExpired(expiresAt: string | null) {
