@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { exchangeMetaCodeForToken } from "@/lib/oauth/meta";
+import { saveIntegrationConnection } from "@/lib/integrations/store";
+import {
+  exchangeMetaCodeForToken,
+  exchangeMetaForLongLivedToken,
+  fetchMetaConnectionProfile,
+  metaScopes
+} from "@/lib/oauth/meta";
 import { parseOAuthState } from "@/lib/oauth/state";
 
 export async function GET(request: Request) {
@@ -24,15 +30,45 @@ export async function GET(request: Request) {
 
   try {
     const token = await exchangeMetaCodeForToken(code);
+    const longLivedToken = await exchangeMetaForLongLivedToken(
+      token.access_token
+    ).catch(() => null);
+    const finalToken = longLivedToken ?? token;
+    const profile = await fetchMetaConnectionProfile(finalToken.access_token).catch(
+      () => null
+    );
 
-    // TODO: Exchange for a long-lived token where applicable, store in Vault,
-    // and upsert integrations/meta_accounts rows for the authenticated company.
-    console.info("Meta OAuth connected", {
-      tokenType: token.token_type,
-      expiresIn: token.expires_in
+    saveIntegrationConnection({
+      provider: "meta",
+      status: "connected",
+      displayName: profile?.name ?? "Meta account connected",
+      externalAccountId: profile?.id,
+      scopes: metaScopes,
+      expiresAt: finalToken.expires_in
+        ? new Date(Date.now() + finalToken.expires_in * 1000).toISOString()
+        : undefined,
+      metadata: {
+        pages: profile?.pages ?? [],
+        tokenMode: longLivedToken ? "long_lived" : "short_lived"
+      },
+      accessToken: finalToken.access_token,
+      tokenType: finalToken.token_type ?? token.token_type,
+      lastSyncAt: new Date().toISOString()
     });
 
-    return NextResponse.redirect(new URL("/settings?meta=connected", request.url));
+    const response = NextResponse.redirect(
+      new URL("/settings?meta=connected", request.url)
+    );
+
+    response.cookies.set("dreamgrowth_meta_oauth_state", "", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 0,
+      path: "/"
+    });
+
+    return response;
   } catch {
     return NextResponse.redirect(
       new URL("/settings?meta=token_exchange_failed", request.url)

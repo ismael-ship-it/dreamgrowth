@@ -92,6 +92,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 Save ad waste, answer reviews, and publish one real project.
               </p>
             </div>
+            <Link
+              href="/api/auth/logout"
+              className="mt-3 inline-flex text-xs font-bold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Lock app
+            </Link>
           </div>
         </div>
       </aside>

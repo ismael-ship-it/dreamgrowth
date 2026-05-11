@@ -2,6 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 
 const editableKeys = [
+  "DREAMGROWTH_APP_PASSWORD",
+  "DREAMGROWTH_SESSION_SECRET",
   "OPENAI_API_KEY",
   "OPENAI_MODEL",
   "AI_PROVIDER",

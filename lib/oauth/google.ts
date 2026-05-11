@@ -2,6 +2,8 @@ import { getOptionalEnv, getRequiredEnv } from "@/lib/env";
 
 const googleOAuthBaseUrl = "https://accounts.google.com/o/oauth2/v2/auth";
 const googleTokenUrl = "https://oauth2.googleapis.com/token";
+const googleBusinessAccountsUrl =
+  "https://mybusinessaccountmanagement.googleapis.com/v1/accounts";
 
 export const googleScopes = [
   "https://www.googleapis.com/auth/business.manage",
@@ -57,6 +59,41 @@ export async function exchangeGoogleCodeForTokens(code: string) {
     scope: string;
     token_type: string;
   }>;
+}
+
+export async function fetchGoogleConnectionProfile(accessToken: string) {
+  const response = await fetch(googleBusinessAccountsUrl, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    },
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google profile fetch failed: ${response.status}`);
+  }
+
+  const data = (await response.json()) as {
+    accounts?: Array<{
+      name?: string;
+      accountName?: string;
+      type?: string;
+    }>;
+  };
+  const accounts =
+    data.accounts?.map((account) => ({
+      id: account.name?.split("/").pop() ?? account.name ?? "unknown",
+      name: account.accountName ?? account.name ?? "Google Business account",
+      type: account.type ?? "unknown"
+    })) ?? [];
+  const primary = accounts[0];
+
+  return {
+    accountId: primary?.id,
+    displayName: primary?.name ?? "Google account connected",
+    accountCount: accounts.length,
+    accounts
+  };
 }
 
 export function getGoogleIntegrationReadiness() {

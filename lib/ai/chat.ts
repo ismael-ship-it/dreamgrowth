@@ -1,8 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
 import { dreamStoneworksContext } from "@/lib/company/dreamstoneworks";
 import { getOptionalEnv } from "@/lib/env";
-import { googleIntegrationSummary } from "@/lib/google/mock-data";
-import { metaIntegrationSummary } from "@/lib/meta/mock-data";
+import { getGoogleIntegrationSummary } from "@/lib/google/service";
+import { getMetaIntegrationSummary } from "@/lib/meta/service";
 import { getWeeklyWinReport } from "@/lib/reports/weekly-win";
 
 export type ChatMessage = {
@@ -26,6 +27,59 @@ Rules:
 `.trim();
 
 export async function askGrowthChat(messages: ChatMessage[]) {
+  const provider = getOptionalEnv("AI_PROVIDER") ?? "gemini";
+  const [googleSummary, metaSummary] = await Promise.all([
+    getGoogleIntegrationSummary(),
+    getMetaIntegrationSummary()
+  ]);
+  const latestUserMessage =
+    [...messages].reverse().find((message) => message.role === "user")?.content ??
+    "What should I do today?";
+  const prompt = [
+    systemContext,
+    `Dream Stoneworks context:\n${JSON.stringify(dreamStoneworksContext, null, 2)}`,
+    `Current Google signals:\n${JSON.stringify(googleSummary, null, 2)}`,
+    `Current Meta signals:\n${JSON.stringify(metaSummary, null, 2)}`,
+    `Weekly report:\n${JSON.stringify(getWeeklyWinReport(), null, 2)}`,
+    `Conversation:\n${messages
+      .map((message) => `${message.role}: ${message.content}`)
+      .join("\n")}`,
+    `User request: ${latestUserMessage}`
+  ].join("\n\n");
+
+  if (provider === "openai") {
+    const apiKey = getOptionalEnv("OPENAI_API_KEY");
+    const model = getOptionalEnv("OPENAI_MODEL") ?? "gpt-4o";
+
+    if (!apiKey) {
+      return {
+        reply:
+          "OpenAI is selected but not configured yet. Add your OpenAI API key in Connect > Admin Setup, then I can answer using DreamGrowth context."
+      };
+    }
+
+    try {
+      const client = new OpenAI({ apiKey });
+      const response = await client.responses.create({
+        model,
+        input: prompt
+      });
+
+      return {
+        reply:
+          response.output_text?.trim() ??
+          "I could not generate a response. Try asking again with a specific task."
+      };
+    } catch (error) {
+      return {
+        reply:
+          error instanceof Error
+            ? `OpenAI is configured, but the chat request failed: ${error.message}`
+            : "OpenAI is configured, but the chat request failed."
+      };
+    }
+  }
+
   const apiKey = getOptionalEnv("GEMINI_API_KEY");
   const model = getOptionalEnv("GEMINI_MODEL") ?? "gemini-2.5-flash";
 
@@ -38,23 +92,10 @@ export async function askGrowthChat(messages: ChatMessage[]) {
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const latestUserMessage =
-      [...messages].reverse().find((message) => message.role === "user")?.content ??
-      "What should I do today?";
 
     const response = await ai.models.generateContent({
       model,
-      contents: [
-        systemContext,
-        `Dream Stoneworks context:\n${JSON.stringify(dreamStoneworksContext, null, 2)}`,
-        `Current Google signals:\n${JSON.stringify(googleIntegrationSummary, null, 2)}`,
-        `Current Meta signals:\n${JSON.stringify(metaIntegrationSummary, null, 2)}`,
-        `Weekly report:\n${JSON.stringify(getWeeklyWinReport(), null, 2)}`,
-        `Conversation:\n${messages
-          .map((message) => `${message.role}: ${message.content}`)
-          .join("\n")}`,
-        `User request: ${latestUserMessage}`
-      ].join("\n\n")
+      contents: prompt
     });
 
     return {

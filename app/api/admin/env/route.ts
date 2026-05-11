@@ -25,6 +25,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     status: saveEditableEnv(input),
     message:
-      "Credentials saved to .env.local. Restart the dev server if a connection still shows setup needed."
+      "Settings saved to .env.local. Restart the dev server if a connection or security state still shows old values."
   });
 }

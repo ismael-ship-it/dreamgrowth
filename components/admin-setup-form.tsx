@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type EnvKey =
+  | "DREAMGROWTH_APP_PASSWORD"
+  | "DREAMGROWTH_SESSION_SECRET"
   | "OPENAI_API_KEY"
   | "OPENAI_MODEL"
   | "AI_PROVIDER"
@@ -29,6 +31,24 @@ const sections: Array<{
   description: string;
   fields: Array<{ key: EnvKey; label: string; placeholder: string; secret?: boolean }>;
 }> = [
+  {
+    title: "Owner Access",
+    description: "Optional in local dev, required before public deployment.",
+    fields: [
+      {
+        key: "DREAMGROWTH_APP_PASSWORD",
+        label: "App Password",
+        placeholder: "Owner password for DreamGrowth",
+        secret: true
+      },
+      {
+        key: "DREAMGROWTH_SESSION_SECRET",
+        label: "Session Secret",
+        placeholder: "Optional custom secret for session signing",
+        secret: true
+      }
+    ]
+  },
   {
     title: "Google",
     description: "Required for Google Business Profile, Ads, GA4, and Search Console.",
@@ -249,7 +269,8 @@ function sectionReady(
   return fields.every((field) => {
     if (
       field.key === "GOOGLE_ADS_DEVELOPER_TOKEN" ||
-      field.key === "GOOGLE_ADS_LOGIN_CUSTOMER_ID"
+      field.key === "GOOGLE_ADS_LOGIN_CUSTOMER_ID" ||
+      field.key === "DREAMGROWTH_SESSION_SECRET"
     ) {
       return true;
     }

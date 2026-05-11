@@ -1,9 +1,18 @@
 import { AppShell } from "@/components/app-shell";
+import { PrototypeModeBanner } from "@/components/prototype-mode-banner";
+import { requireAppSession } from "@/lib/auth";
 
-export default function ProductLayout({
+export default async function ProductLayout({
   children
 }: {
   children: React.ReactNode;
 }) {
-  return <AppShell>{children}</AppShell>;
+  await requireAppSession();
+
+  return (
+    <AppShell>
+      <PrototypeModeBanner />
+      {children}
+    </AppShell>
+  );
 }

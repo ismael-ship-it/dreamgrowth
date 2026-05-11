@@ -1,12 +1,25 @@
 import { NextResponse } from "next/server";
-import { googleIntegrationSummary } from "@/lib/google/mock-data";
-import { metaIntegrationSummary } from "@/lib/meta/mock-data";
 import { generateDailyStackWithOpenAI } from "@/lib/ai/openai";
+import {
+  getGoogleConnection,
+  getGoogleIntegrationSummary
+} from "@/lib/google/service";
+import { getMetaConnection, getMetaIntegrationSummary } from "@/lib/meta/service";
 
 export async function POST() {
+  const [google, meta, googleConnection, metaConnection] = await Promise.all([
+    getGoogleIntegrationSummary(),
+    getMetaIntegrationSummary(),
+    Promise.resolve(getGoogleConnection()),
+    Promise.resolve(getMetaConnection())
+  ]);
   const result = await generateDailyStackWithOpenAI({
-    google: googleIntegrationSummary,
-    meta: metaIntegrationSummary,
+    google,
+    meta,
+    connection: {
+      googleConnected: googleConnection.isConnected,
+      metaConnected: metaConnection.isConnected
+    },
     approvalRule: "AI recommends. Owner approves. DreamGrowth executes."
   });
 

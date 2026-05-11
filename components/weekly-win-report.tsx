@@ -21,10 +21,13 @@ export function WeeklyWinReportView() {
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               {report.weekStart} to {report.weekEnd}
             </p>
+            <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-muted-foreground">
+              {report.note}
+            </p>
           </div>
-          <Badge variant="success">
+          <Badge variant={report.mode === "sample_connected" ? "success" : "warning"}>
             <Trophy className="mr-1 h-3 w-3" />
-            Proof of value
+            {report.mode === "sample_connected" ? "Connected sample mode" : "Setup needed"}
           </Badge>
         </div>
       </section>

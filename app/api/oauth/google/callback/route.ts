@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { exchangeGoogleCodeForTokens } from "@/lib/oauth/google";
+import { saveIntegrationConnection } from "@/lib/integrations/store";
+import {
+  exchangeGoogleCodeForTokens,
+  fetchGoogleConnectionProfile
+} from "@/lib/oauth/google";
 import { parseOAuthState } from "@/lib/oauth/state";
 
 export async function GET(request: Request) {
@@ -24,17 +28,44 @@ export async function GET(request: Request) {
 
   try {
     const tokens = await exchangeGoogleCodeForTokens(code);
+    const profile = await fetchGoogleConnectionProfile(tokens.access_token).catch(
+      () => null
+    );
 
-    // TODO: Store tokens.refresh_token in Supabase Vault and save only token_vault_ref.
-    // TODO: Upsert integrations/google_accounts rows for the authenticated company.
-    console.info("Google OAuth connected", {
-      hasRefreshToken: Boolean(tokens.refresh_token),
-      scope: tokens.scope
+    saveIntegrationConnection({
+      provider: "google",
+      status: "connected",
+      displayName: profile?.displayName ?? "Google account connected",
+      externalAccountId: profile?.accountId,
+      scopes: tokens.scope
+        ? tokens.scope.split(" ").map((scope) => scope.trim()).filter(Boolean)
+        : [],
+      expiresAt: tokens.expires_in
+        ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+        : undefined,
+      metadata: {
+        accountCount: profile?.accountCount ?? 0,
+        accounts: profile?.accounts ?? []
+      },
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      tokenType: tokens.token_type,
+      lastSyncAt: new Date().toISOString()
     });
 
-    return NextResponse.redirect(
+    const response = NextResponse.redirect(
       new URL("/settings?google=connected", request.url)
     );
+
+    response.cookies.set("dreamgrowth_google_oauth_state", "", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 0,
+      path: "/"
+    });
+
+    return response;
   } catch {
     return NextResponse.redirect(
       new URL("/settings?google=token_exchange_failed", request.url)

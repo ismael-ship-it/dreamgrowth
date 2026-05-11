@@ -41,6 +41,20 @@ export type GrowthTask = {
   weightedScore: number;
 };
 
+export type AiTaskLike = {
+  task_type: TaskType;
+  title: string;
+  reason: string;
+  suggested_action: string;
+  impact_score: number;
+  urgency_score: number;
+  confidence_score: number;
+  estimated_time_minutes: number;
+  requires_approval: boolean;
+  source_platform: SourcePlatform;
+  related_record_id: string;
+};
+
 type GrowthSignal = {
   id: string;
   priorityRank: number;
@@ -255,6 +269,117 @@ export function generateDailyGrowthStack(signals: GrowthSignal[]): GrowthTask[] 
     .slice(0, 5);
 }
 
+export function generateContextAwareFallbackStack(input: unknown): GrowthTask[] {
+  const connection = readConnectionFlags(input);
+
+  if (connection.googleConnected || connection.metaConnected) {
+    return generateDailyGrowthStack(mockGrowthSignals);
+  }
+
+  return [
+    createSetupTask({
+      id: "setup-google",
+      taskType: "seo_cleanup",
+      title: "Connect Google first",
+      reason:
+        "Google is the highest-value first connection because it unlocks reviews, Google Business activity, search terms, GA4, and Search Console signals.",
+      suggestedAction:
+        "Open Connect, save Google OAuth credentials if needed, then finish the Google connection flow.",
+      impactScore: 95,
+      urgencyScore: 94,
+      confidenceScore: 98,
+      sourcePlatform: "manual",
+      relatedRecordId: "setup-google"
+    }),
+    createSetupTask({
+      id: "setup-ai",
+      taskType: "weekly_report",
+      title: "Add your AI key",
+      reason:
+        "DreamGrowth becomes much more useful once Daily Stack and Growth Chat can rank actions instead of using only local fallback logic.",
+      suggestedAction:
+        "Choose Gemini or OpenAI in Settings and paste the API key for the provider you want to use.",
+      impactScore: 84,
+      urgencyScore: 82,
+      confidenceScore: 96,
+      sourcePlatform: "manual",
+      relatedRecordId: "setup-ai"
+    }),
+    createSetupTask({
+      id: "setup-meta",
+      taskType: "meta_post",
+      title: "Connect Meta only if you use it",
+      reason:
+        "Meta is optional, but it becomes valuable if you want Facebook, Instagram, or lead workflows in the same operator.",
+      suggestedAction:
+        "Add Meta credentials later if you use Facebook Pages, Instagram Business, or Meta lead forms.",
+      impactScore: 58,
+      urgencyScore: 40,
+      confidenceScore: 88,
+      sourcePlatform: "manual",
+      relatedRecordId: "setup-meta"
+    }),
+    createSetupTask({
+      id: "setup-security",
+      taskType: "review_request",
+      title: "Protect owner access before deployment",
+      reason:
+        "The app should not stay open once it is public, especially because it stores OAuth connections locally.",
+      suggestedAction:
+        "Set DREAMGROWTH_APP_PASSWORD and DREAMGROWTH_SESSION_SECRET, then restart the app before sharing it publicly.",
+      impactScore: 76,
+      urgencyScore: 68,
+      confidenceScore: 94,
+      sourcePlatform: "manual",
+      relatedRecordId: "setup-security"
+    }),
+    createSetupTask({
+      id: "setup-stack",
+      taskType: "photo_upload",
+      title: "Run Daily Stack again after setup",
+      reason:
+        "Once Google and AI are configured, DreamGrowth can produce more meaningful operator actions for the owner to approve.",
+      suggestedAction:
+        "Reconnect here after setup and re-open Daily Stack to get a ranked action list.",
+      impactScore: 62,
+      urgencyScore: 54,
+      confidenceScore: 92,
+      sourcePlatform: "manual",
+      relatedRecordId: "setup-stack"
+    })
+  ];
+}
+
+export function normalizeAiTasks(tasks: AiTaskLike[]): GrowthTask[] {
+  return tasks.map((task, index) => {
+    const impactScore = clampScore(task.impact_score);
+    const urgencyScore = clampScore(task.urgency_score);
+    const confidenceScore = clampScore(task.confidence_score);
+
+    return {
+      id: task.related_record_id || `ai-task-${index + 1}`,
+      taskType: task.task_type,
+      title: task.title,
+      reason: task.reason,
+      suggestedAction: task.suggested_action,
+      impactScore,
+      urgencyScore,
+      urgency: labelUrgency(urgencyScore),
+      confidenceScore,
+      estimatedTimeMinutes: task.estimated_time_minutes,
+      estimatedTime: `${task.estimated_time_minutes} min`,
+      requiresApproval: task.requires_approval,
+      sourcePlatform: task.source_platform,
+      source: sourceLabels[task.source_platform] ?? "AI Growth Brain",
+      relatedRecordId: task.related_record_id,
+      priorityRank: index + 1,
+      weightedScore: clampScore(
+        impactScore * 0.5 + urgencyScore * 0.3 + confidenceScore * 0.2
+      )
+    };
+  });
+}
+
 function toGrowthTask(signal: GrowthSignal): GrowthTask {
   const baseImpactScore = clampScore(
     signal.moneyImpact * 0.28 +
@@ -306,6 +431,59 @@ function compareGrowthTasks(a: GrowthTask, b: GrowthTask) {
   }
 
   return b.weightedScore - a.weightedScore || priorityDelta;
+}
+
+function createSetupTask(input: {
+  id: string;
+  taskType: TaskType;
+  title: string;
+  reason: string;
+  suggestedAction: string;
+  impactScore: number;
+  urgencyScore: number;
+  confidenceScore: number;
+  sourcePlatform: SourcePlatform;
+  relatedRecordId: string;
+}): GrowthTask {
+  const urgencyScore = clampScore(input.urgencyScore);
+  const impactScore = clampScore(input.impactScore);
+  const confidenceScore = clampScore(input.confidenceScore);
+
+  return {
+    id: input.id,
+    taskType: input.taskType,
+    title: input.title,
+    reason: input.reason,
+    suggestedAction: input.suggestedAction,
+    impactScore,
+    urgencyScore,
+    urgency: labelUrgency(urgencyScore),
+    confidenceScore,
+    estimatedTimeMinutes: 5,
+    estimatedTime: "5 min",
+    requiresApproval: false,
+    sourcePlatform: input.sourcePlatform,
+    source: sourceLabels[input.sourcePlatform],
+    relatedRecordId: input.relatedRecordId,
+    priorityRank: 0,
+    weightedScore: clampScore(
+      impactScore * 0.5 + urgencyScore * 0.3 + confidenceScore * 0.2
+    )
+  };
+}
+
+function readConnectionFlags(input: unknown) {
+  const value = input as {
+    connection?: {
+      googleConnected?: boolean;
+      metaConnected?: boolean;
+    };
+  };
+
+  return {
+    googleConnected: Boolean(value?.connection?.googleConnected),
+    metaConnected: Boolean(value?.connection?.metaConnected)
+  };
 }
 
 function clampScore(value: number) {

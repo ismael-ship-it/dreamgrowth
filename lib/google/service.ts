@@ -3,9 +3,46 @@ import type {
   GoogleApprovalAction,
   GoogleIntegrationSummary
 } from "@/lib/google/types";
+import { getIntegrationConnection } from "@/lib/integrations/store";
+
+const emptyGoogleSummary: GoogleIntegrationSummary = {
+  googleBusiness: {
+    metrics: [],
+    reviews: [],
+    postDrafts: []
+  },
+  googleAds: {
+    wastedSpend: 0,
+    searchTerms: [],
+    negativeKeywordSuggestions: []
+  },
+  ga4: {
+    metrics: []
+  },
+  searchConsole: {
+    metrics: []
+  },
+  approvalRule:
+    "No Google account is connected yet. Connect Google in Settings before DreamGrowth can read reviews, ads, GA4, or Search Console."
+};
+
+export function getGoogleConnection() {
+  return getIntegrationConnection("google");
+}
 
 export async function getGoogleIntegrationSummary(): Promise<GoogleIntegrationSummary> {
-  return googleIntegrationSummary;
+  const connection = getGoogleConnection();
+
+  if (!connection.isConnected) {
+    return emptyGoogleSummary;
+  }
+
+  return {
+    ...googleIntegrationSummary,
+    approvalRule: `${googleIntegrationSummary.approvalRule} Connected locally as ${
+      connection.displayName ?? "Google account"
+    }. Live sync is still in guided sample mode while API sync is being wired.`
+  };
 }
 
 export async function fetchGoogleBusinessSnapshot() {

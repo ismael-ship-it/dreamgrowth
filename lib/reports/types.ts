@@ -6,6 +6,8 @@ export type WeeklyWinMetric = {
 
 export type WeeklyWinReport = {
   id: string;
+  mode: "setup_needed" | "sample_connected";
+  note: string;
   weekStart: string;
   weekEnd: string;
   headline: string;
