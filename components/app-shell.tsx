@@ -7,9 +7,11 @@ import {
   Cable,
   Home,
   MessageCircle,
+  MessageSquareText,
   Search,
   Settings,
   Store,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -110,6 +112,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 Ads, Meta, content, calendar, and reports stay out of the main
                 navigation until the first live loop is stable.
               </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link
+                  href="/growth-chat"
+                  className="inline-flex items-center gap-2 rounded-md bg-background px-3 py-2 text-xs font-bold text-foreground transition-colors hover:bg-card"
+                >
+                  <MessageSquareText className="h-3.5 w-3.5 text-accent-foreground" />
+                  Growth Chat
+                </Link>
+                <Link
+                  href="/reviews"
+                  className="inline-flex items-center gap-2 rounded-md bg-background px-3 py-2 text-xs font-bold text-foreground transition-colors hover:bg-card"
+                >
+                  <Star className="h-3.5 w-3.5 text-accent-foreground" />
+                  Reviews
+                </Link>
+              </div>
             </div>
             <Link
               href="/api/auth/logout"

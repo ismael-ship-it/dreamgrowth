@@ -13,6 +13,11 @@ import {
 import type { GoogleIntegrationSummary } from "@/lib/google/types";
 import { getMeaningfulConnectionName } from "@/lib/integrations/display-name";
 import type { IntegrationConnection } from "@/lib/integrations/store";
+import {
+  formatGoogleSyncAttempt,
+  getGoogleSyncDiagnostic,
+  getGoogleSyncDiagnosticTitle
+} from "@/lib/google/sync-diagnostics";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +37,7 @@ export function GoogleBusinessManager({
   const accounts = Array.isArray(connection.metadata.accounts)
     ? (connection.metadata.accounts as Array<{ name?: string }>)
     : [];
-  const lastSyncError = readGoogleSyncError(connection.metadata);
+  const lastSyncError = getGoogleSyncDiagnostic(connection);
   const syncFailureMessage = getGoogleSyncFailureMessage(syncReason);
 
   return (
@@ -75,7 +80,7 @@ export function GoogleBusinessManager({
         <Card className="border-amber-200 bg-amber-50/80">
           <CardContent className="space-y-2 p-4">
             <div className="text-sm font-bold text-amber-950">
-              Last sync diagnostic
+              {getGoogleSyncDiagnosticTitle(lastSyncError) ?? "Last sync diagnostic"}
             </div>
             <p className="text-sm leading-6 text-amber-950">
               {lastSyncError.message}
@@ -84,6 +89,12 @@ export function GoogleBusinessManager({
               Stage: {lastSyncError.stage} | Status:{" "}
               {lastSyncError.status ?? "unknown"} | Reason: {lastSyncError.reason}
             </p>
+            {formatGoogleSyncAttempt(lastSyncError.lastSyncAttemptAt) ? (
+              <p className="text-xs font-semibold text-amber-900/90">
+                Last attempt:{" "}
+                {formatGoogleSyncAttempt(lastSyncError.lastSyncAttemptAt)}
+              </p>
+            ) : null}
             <p className="text-xs font-semibold leading-5 text-amber-900/90">
               Next move: {lastSyncError.hint}
             </p>
@@ -272,38 +283,6 @@ function getGoogleSyncFailureMessage(reason?: string) {
   }
 }
 
-function readGoogleSyncError(metadata: Record<string, unknown>) {
-  const value = metadata.lastSyncError;
-
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const candidate = value as {
-    reason?: string;
-    stage?: string;
-    status?: number | null;
-    message?: string;
-    hint?: string;
-    helpUrl?: string | null;
-  };
-
-  if (!candidate.message || !candidate.reason) {
-    return null;
-  }
-
-  return {
-    reason: candidate.reason,
-    stage: candidate.stage ?? "unknown",
-    status:
-      typeof candidate.status === "number" || candidate.status === null
-        ? candidate.status
-        : null,
-    message: candidate.message,
-    hint: candidate.hint ?? "Reconnect Google and check the Business Profile APIs.",
-    helpUrl: typeof candidate.helpUrl === "string" ? candidate.helpUrl : null
-  };
-}
 
 function EmptyMessage({ text }: { text: string }) {
   return (

@@ -1,7 +1,18 @@
 import Link from "next/link";
-import { MessageSquareText, RefreshCw, Star } from "lucide-react";
+import {
+  ExternalLink,
+  MessageSquareText,
+  RefreshCw,
+  Star
+} from "lucide-react";
 import type { GoogleIntegrationSummary } from "@/lib/google/types";
+import { getMeaningfulConnectionName } from "@/lib/integrations/display-name";
 import type { IntegrationConnection } from "@/lib/integrations/store";
+import {
+  formatGoogleSyncAttempt,
+  getGoogleSyncDiagnostic,
+  getGoogleSyncDiagnosticTitle
+} from "@/lib/google/sync-diagnostics";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +29,7 @@ export function ReviewsWorkspace({
   const reviews = summary.googleBusiness.reviews;
   const liveSync = Boolean(connection.metadata.liveSync);
   const hasScope = connection.scopes.includes(GOOGLE_BUSINESS_SCOPE);
+  const syncDiagnostic = getGoogleSyncDiagnostic(connection);
   const averageRating = reviews.length
     ? (
         reviews.reduce((total, review) => total + review.rating, 0) / reviews.length
@@ -49,6 +61,51 @@ export function ReviewsWorkspace({
         </div>
       </section>
 
+      {syncDiagnostic ? (
+        <Card className="border-amber-200 bg-amber-50/80">
+          <CardContent className="space-y-2 p-4">
+            <div className="text-sm font-bold text-amber-950">
+              {getGoogleSyncDiagnosticTitle(syncDiagnostic) ??
+                "Google sync needs attention"}
+            </div>
+            <p className="text-sm leading-6 text-amber-950">
+              {syncDiagnostic.message}
+            </p>
+            <p className="text-xs font-semibold text-amber-900/90">
+              Stage: {syncDiagnostic.stage} | Status:{" "}
+              {syncDiagnostic.status ?? "unknown"} | Reason:{" "}
+              {syncDiagnostic.reason}
+            </p>
+            {formatGoogleSyncAttempt(syncDiagnostic.lastSyncAttemptAt) ? (
+              <p className="text-xs font-semibold text-amber-900/90">
+                Last attempt:{" "}
+                {formatGoogleSyncAttempt(syncDiagnostic.lastSyncAttemptAt)}
+              </p>
+            ) : null}
+            <p className="text-xs font-semibold leading-5 text-amber-900/90">
+              Next move: {syncDiagnostic.hint}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm">
+                <Link href="/google-business">Open Google Business</Link>
+              </Button>
+              {syncDiagnostic.helpUrl ? (
+                <Button asChild size="sm" variant="outline">
+                  <a
+                    href={syncDiagnostic.helpUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open Google API setup
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {!connection.isConnected ? (
         <ActionCard
           title="Google is not connected yet"
@@ -62,6 +119,13 @@ export function ReviewsWorkspace({
           body="The connected Google account is saved, but DreamGrowth still needs the Google Business scope to read reviews. Reconnect Google and approve the Business access request."
           href="/connect"
           cta="Reconnect Google"
+        />
+      ) : syncDiagnostic ? (
+        <ActionCard
+          title="Google sync still needs one fix"
+          body={`${syncDiagnostic.message} Next move: ${syncDiagnostic.hint}`}
+          href="/connect"
+          cta="Fix Google sync"
         />
       ) : !liveSync ? (
         <ActionCard
@@ -152,9 +216,11 @@ export function ReviewsWorkspace({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="rounded-lg border border-border bg-background/70 p-4 text-sm font-semibold leading-6">
-                  Review the first response draft, tighten tone if needed, then
-                  copy it into Google Business manually until direct publishing is
-                  wired.
+                  Review the first response draft for{" "}
+                  {getMeaningfulConnectionName(connection.displayName) ??
+                    "the connected Google account"}
+                  , tighten tone if needed, then copy it into Google Business
+                  manually until direct publishing is wired.
                 </div>
                 <div className="rounded-lg border border-dashed border-border p-4 text-xs font-semibold leading-5 text-muted-foreground">
                   DreamGrowth reads live reviews here, but posting the response

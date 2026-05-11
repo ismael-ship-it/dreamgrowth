@@ -8,6 +8,10 @@ import {
 } from "lucide-react";
 import { getAppReadiness } from "@/lib/app-readiness";
 import { getMeaningfulConnectionName } from "@/lib/integrations/display-name";
+import {
+  getGoogleSyncDiagnostic,
+  getGoogleSyncDiagnosticTitle
+} from "@/lib/google/sync-diagnostics";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +35,7 @@ type MissionStep = {
 export function DashboardOverview() {
   const readiness = getAppReadiness();
   const googleLiveSync = Boolean(readiness.google.metadata.liveSync);
+  const googleDiagnostic = getGoogleSyncDiagnostic(readiness.google);
   const steps = buildMissionSteps(readiness);
   const nextStep = steps.find((step) => step.state === "active") ?? steps[2];
   const completedCount = steps.filter((step) => step.state === "complete").length;
@@ -80,6 +85,16 @@ export function DashboardOverview() {
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
               {buildHeroBody(readiness, googleLiveSync)}
             </p>
+            {googleDiagnostic ? (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/80 p-4 text-sm">
+                <div className="font-bold text-amber-950">
+                  {getGoogleSyncDiagnosticTitle(googleDiagnostic)}
+                </div>
+                <p className="mt-2 leading-6 text-amber-950">
+                  {googleDiagnostic.hint}
+                </p>
+              </div>
+            ) : null}
           </div>
 
           <Card className="border-border/70 bg-background/60 shadow-none">
@@ -203,8 +218,14 @@ function buildHeroBody(
   readiness: ReturnType<typeof getAppReadiness>,
   googleLiveSync: boolean
 ) {
+  const googleDiagnostic = getGoogleSyncDiagnostic(readiness.google);
+
   if (!readiness.google.isConnected) {
     return "DreamGrowth is intentionally narrowed to one mission: connect the owner Google account first, because that is the fastest path to real local-intent data and the cleanest first operator loop.";
+  }
+
+  if (googleDiagnostic) {
+    return "Google is connected, but the first live sync is still blocked by an external Google setup issue. DreamGrowth is now surfacing that blocker directly so the owner can resolve it and unlock the real operator loop.";
   }
 
   if (!googleLiveSync) {
@@ -217,6 +238,7 @@ function buildHeroBody(
 function buildMissionSteps(readiness: ReturnType<typeof getAppReadiness>) {
   const googleConnected = readiness.google.isConnected;
   const googleLiveSync = Boolean(readiness.google.metadata.liveSync);
+  const googleDiagnostic = getGoogleSyncDiagnostic(readiness.google);
   const googleDisplayName =
     getMeaningfulConnectionName(readiness.google.displayName) ??
     "your Google owner account";
@@ -271,16 +293,18 @@ function buildMissionSteps(readiness: ReturnType<typeof getAppReadiness>) {
         }
       : googleConnected
         ? {
-            title: "Run first sync",
-            summary:
-              "Google is connected. Run one live sync to pull Business accounts, locations, and reviews into DreamGrowth.",
-            detail:
-              "This is the move that takes the workspace from setup mode to real Google data.",
-            status: "Next step",
+            title: googleDiagnostic ? "Fix Google sync blocker" : "Run first sync",
+            summary: googleDiagnostic
+              ? googleDiagnostic.message
+              : "Google is connected. Run one live sync to pull Business accounts, locations, and reviews into DreamGrowth.",
+            detail: googleDiagnostic
+              ? googleDiagnostic.hint
+              : "This is the move that takes the workspace from setup mode to real Google data.",
+            status: googleDiagnostic ? "Blocked externally" : "Next step",
             state: "active",
-            badgeVariant: "default",
-            href: "/google-business",
-            cta: "Run first sync",
+            badgeVariant: googleDiagnostic ? "warning" : "default",
+            href: googleDiagnostic?.helpUrl ? "/connect" : "/google-business",
+            cta: googleDiagnostic ? "Open connection help" : "Run first sync",
             ctaVariant: "default",
             icon: RefreshCw
           }

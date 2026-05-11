@@ -14,6 +14,11 @@ import { getCompanyProfile } from "@/lib/company/profile";
 import { getAppReadiness } from "@/lib/app-readiness";
 import { getMeaningfulConnectionName } from "@/lib/integrations/display-name";
 import {
+  formatGoogleSyncAttempt,
+  getGoogleSyncDiagnostic,
+  getGoogleSyncDiagnosticTitle
+} from "@/lib/google/sync-diagnostics";
+import {
   type IntegrationConnection,
   type IntegrationProvider
 } from "@/lib/integrations/store";
@@ -35,6 +40,7 @@ export function IntegrationsSettings({
 }) {
   const readiness = getAppReadiness();
   const companyProfile = getCompanyProfile();
+  const googleDiagnostic = getGoogleSyncDiagnostic(readiness.google);
 
   return (
     <div className="space-y-5">
@@ -58,6 +64,56 @@ export function IntegrationsSettings({
 
       <StatusNotice provider="google" code={statusQueries?.google} />
       <StatusNotice provider="meta" code={statusQueries?.meta} />
+
+      {googleDiagnostic ? (
+        <Card className="border-amber-200 bg-amber-50/80">
+          <CardContent className="space-y-3 p-5">
+            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="text-sm font-bold text-amber-950">
+                  {getGoogleSyncDiagnosticTitle(googleDiagnostic)}
+                </div>
+                <p className="mt-2 text-sm leading-6 text-amber-950">
+                  {googleDiagnostic.message}
+                </p>
+              </div>
+              <Badge variant="warning">
+                {googleDiagnostic.reason.replaceAll("_", " ")}
+              </Badge>
+            </div>
+            <p className="text-sm font-semibold leading-6 text-amber-900/90">
+              Next move: {googleDiagnostic.hint}
+            </p>
+            <div className="flex flex-wrap gap-2 text-xs font-semibold text-amber-900/90">
+              <span>Stage: {googleDiagnostic.stage}</span>
+              <span>Status: {googleDiagnostic.status ?? "unknown"}</span>
+              {formatGoogleSyncAttempt(googleDiagnostic.lastSyncAttemptAt) ? (
+                <span>
+                  Last attempt:{" "}
+                  {formatGoogleSyncAttempt(googleDiagnostic.lastSyncAttemptAt)}
+                </span>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild>
+                <Link href="/google-business">Open Google Business</Link>
+              </Button>
+              {googleDiagnostic.helpUrl ? (
+                <Button asChild variant="outline">
+                  <a
+                    href={googleDiagnostic.helpUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open Google API setup
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr_0.9fr]">
         <UserConnectionCard
