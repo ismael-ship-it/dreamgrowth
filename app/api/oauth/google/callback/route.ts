@@ -44,6 +44,8 @@ export async function GET(request: Request) {
         ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
         : undefined,
       metadata: {
+        email: profile?.email ?? null,
+        fullName: profile?.fullName ?? null,
         accountCount: profile?.accountCount ?? 0,
         accounts: profile?.accounts ?? []
       },

@@ -4,12 +4,13 @@ const googleOAuthBaseUrl = "https://accounts.google.com/o/oauth2/v2/auth";
 const googleTokenUrl = "https://oauth2.googleapis.com/token";
 const googleBusinessAccountsUrl =
   "https://mybusinessaccountmanagement.googleapis.com/v1/accounts";
+const googleUserInfoUrl = "https://openidconnect.googleapis.com/v1/userinfo";
 
 export const googleScopes = [
   "https://www.googleapis.com/auth/business.manage",
-  "https://www.googleapis.com/auth/adwords",
-  "https://www.googleapis.com/auth/analytics.readonly",
-  "https://www.googleapis.com/auth/webmasters.readonly"
+  "https://www.googleapis.com/auth/userinfo.email",
+  "https://www.googleapis.com/auth/userinfo.profile",
+  "openid"
 ];
 
 export function getGoogleOAuthUrl(state: string) {
@@ -91,6 +92,51 @@ export async function refreshGoogleAccessToken(refreshToken: string) {
 }
 
 export async function fetchGoogleConnectionProfile(accessToken: string) {
+  const [userInfo, accounts] = await Promise.all([
+    fetchGoogleUserInfo(accessToken),
+    fetchGoogleBusinessAccounts(accessToken)
+  ]);
+
+  const primary = accounts[0];
+  const displayName =
+    primary?.name ?? userInfo?.name ?? userInfo?.email ?? "Google account connected";
+
+  return {
+    accountId: primary?.id ?? userInfo?.sub,
+    displayName,
+    email: userInfo?.email ?? null,
+    fullName: userInfo?.name ?? null,
+    accountCount: accounts.length,
+    accounts
+  };
+}
+
+async function fetchGoogleUserInfo(accessToken: string) {
+  const response = await fetch(googleUserInfoUrl, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    },
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = (await response.json()) as {
+    sub?: string;
+    name?: string;
+    email?: string;
+  };
+
+  return {
+    sub: data.sub ?? null,
+    name: data.name ?? null,
+    email: data.email ?? null
+  };
+}
+
+async function fetchGoogleBusinessAccounts(accessToken: string) {
   const response = await fetch(googleBusinessAccountsUrl, {
     headers: {
       Authorization: `Bearer ${accessToken}`
@@ -99,7 +145,7 @@ export async function fetchGoogleConnectionProfile(accessToken: string) {
   });
 
   if (!response.ok) {
-    throw new Error(`Google profile fetch failed: ${response.status}`);
+    return [];
   }
 
   const data = (await response.json()) as {
@@ -109,20 +155,14 @@ export async function fetchGoogleConnectionProfile(accessToken: string) {
       type?: string;
     }>;
   };
-  const accounts =
+
+  return (
     data.accounts?.map((account) => ({
       id: account.name?.split("/").pop() ?? account.name ?? "unknown",
       name: account.accountName ?? account.name ?? "Google Business account",
       type: account.type ?? "unknown"
-    })) ?? [];
-  const primary = accounts[0];
-
-  return {
-    accountId: primary?.id,
-    displayName: primary?.name ?? "Google account connected",
-    accountCount: accounts.length,
-    accounts
-  };
+    })) ?? []
+  );
 }
 
 export function getGoogleIntegrationReadiness() {

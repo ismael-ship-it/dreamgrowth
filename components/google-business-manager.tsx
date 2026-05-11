@@ -10,6 +10,7 @@ import {
   Upload
 } from "lucide-react";
 import type { GoogleIntegrationSummary } from "@/lib/google/types";
+import { getMeaningfulConnectionName } from "@/lib/integrations/display-name";
 import type { IntegrationConnection } from "@/lib/integrations/store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,9 @@ export function GoogleBusinessManager({
         <Card>
           <CardContent className="space-y-2 p-4">
             <div className="text-sm font-bold">
-              Connected as {connection.displayName ?? "Google account"}
+              Connected as{" "}
+              {getMeaningfulConnectionName(connection.displayName) ??
+                "your Google account"}
             </div>
             <p className="text-sm leading-6 text-muted-foreground">
               DreamGrowth saved your Google OAuth connection locally and can now
@@ -101,8 +104,7 @@ export function GoogleBusinessManager({
             <div className="text-lg font-black">Google is not connected yet</div>
             <p className="text-sm leading-6 text-muted-foreground">
               Connect Google in Settings first. That is the highest-value source
-              because it unlocks reviews, profile activity, ads, GA4, and Search
-              Console inputs.
+              because it unlocks reviews, locations, and profile activity first.
             </p>
             <Button asChild>
               <Link href="/settings">Open Settings</Link>

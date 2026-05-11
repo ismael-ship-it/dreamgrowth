@@ -15,7 +15,11 @@ import {
   getIntegrationCredentials,
   saveIntegrationConnection
 } from "@/lib/integrations/store";
-import { refreshGoogleAccessToken } from "@/lib/oauth/google";
+import { getMeaningfulConnectionName } from "@/lib/integrations/display-name";
+import {
+  fetchGoogleConnectionProfile,
+  refreshGoogleAccessToken
+} from "@/lib/oauth/google";
 
 type GoogleAccount = {
   id: string;
@@ -76,7 +80,7 @@ export function getGoogleConnection() {
 }
 
 export async function getGoogleIntegrationSummary(): Promise<GoogleIntegrationSummary> {
-  const connection = getGoogleConnection();
+  const connection = await hydrateGoogleConnectionIdentity(getGoogleConnection());
 
   if (!connection.isConnected) {
     return emptyGoogleSummary;
@@ -114,7 +118,9 @@ export async function syncGoogleIntegrationSummary() {
     accounts,
     locations,
     reviews,
-    connectedDisplayName: connection.displayName ?? "Google account connected"
+    connectedDisplayName:
+      getMeaningfulConnectionName(connection.displayName) ??
+      "Connected owner account"
   });
 
   saveGoogleSnapshot(summary);
@@ -194,6 +200,35 @@ async function getValidGoogleAccessToken() {
   });
 
   return refreshed.access_token;
+}
+
+async function hydrateGoogleConnectionIdentity(connection = getGoogleConnection()) {
+  if (!connection.isConnected || getMeaningfulConnectionName(connection.displayName)) {
+    return connection;
+  }
+
+  try {
+    const accessToken = await getValidGoogleAccessToken();
+    const profile = await fetchGoogleConnectionProfile(accessToken);
+    const displayName = profile.displayName || connection.displayName;
+
+    saveIntegrationConnection({
+      provider: "google",
+      status: "connected",
+      displayName: displayName ?? undefined,
+      externalAccountId: profile.accountId ?? connection.externalAccountId ?? undefined,
+      metadata: {
+        email: profile.email ?? connection.metadata["email"] ?? null,
+        fullName: profile.fullName ?? connection.metadata["fullName"] ?? null,
+        accountCount: profile.accountCount,
+        accounts: profile.accounts
+      }
+    });
+
+    return getGoogleConnection();
+  } catch {
+    return connection;
+  }
 }
 
 async function fetchGoogleAccountsAndLocations(accessToken: string) {
@@ -406,13 +441,16 @@ function buildGoogleSummary(input: {
 }
 
 function createConnectedPendingGoogleSummary(displayName?: string | null) {
+  const connectedAs =
+    getMeaningfulConnectionName(displayName) ?? "Connected owner account";
+
   return {
     googleBusiness: {
       metrics: [
         {
           label: "Connection",
           value: "Ready",
-          trend: displayName ?? "Google account connected"
+          trend: connectedAs
         },
         {
           label: "Live sync",

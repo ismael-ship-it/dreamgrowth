@@ -83,7 +83,8 @@ export async function generateDailyStackWithGemini(input: unknown) {
     return {
       mode: "local_fallback",
       tasks: generateContextAwareFallbackStack(input),
-      note: "GEMINI_API_KEY is not configured, so DreamGrowth used the local scoring engine."
+      note:
+        "Gemini is not configured, so DreamGrowth ranked today's work with the local operator engine."
     };
   }
 
@@ -116,8 +117,8 @@ export async function generateDailyStackWithGemini(input: unknown) {
       tasks: generateContextAwareFallbackStack(input),
       note:
         error instanceof Error
-          ? `Gemini call failed, so DreamGrowth used the local scoring engine. ${error.message}`
-          : "Gemini call failed, so DreamGrowth used the local scoring engine."
+          ? `Gemini is temporarily unavailable, so DreamGrowth used the local operator engine instead. ${error.message}`
+          : "Gemini is temporarily unavailable, so DreamGrowth used the local operator engine instead."
     };
   }
 }

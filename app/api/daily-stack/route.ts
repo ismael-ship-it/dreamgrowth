@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { generateDailyStackWithOpenAI } from "@/lib/ai/openai";
 import {
   getGoogleConnection,
   getGoogleIntegrationSummary
 } from "@/lib/google/service";
 import { getMetaConnection, getMetaIntegrationSummary } from "@/lib/meta/service";
+import { buildOperatorDailyStack } from "@/lib/task-engine";
 
 export async function GET() {
   const [google, meta, googleConnection, metaConnection] = await Promise.all([
@@ -13,22 +13,15 @@ export async function GET() {
     Promise.resolve(getGoogleConnection()),
     Promise.resolve(getMetaConnection())
   ]);
-  const result = await generateDailyStackWithOpenAI({
+  const result = buildOperatorDailyStack({
     google,
     meta,
-    connection: {
-      googleConnected: googleConnection.isConnected,
-      metaConnected: metaConnection.isConnected,
-      googleLiveSync: Boolean(googleConnection.metadata.liveSync),
-      metaLiveSync: Boolean(metaConnection.metadata.liveSync)
-    },
-    approvalRule: "AI recommends. Owner approves. DreamGrowth executes."
+    googleConnection,
+    metaConnection
   });
 
   return NextResponse.json({
-    tasks: result.tasks,
-    generatedAt: new Date().toISOString(),
-    approvalRule: "AI recommends. Owner approves. DreamGrowth executes.",
-    note: result.note
+    ...result,
+    generatedAt: new Date().toISOString()
   });
 }

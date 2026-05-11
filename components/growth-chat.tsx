@@ -13,11 +13,12 @@ type Message = {
 
 const quickPrompts = [
   "What should I do today?",
-  "Create a Google post idea for our primary city.",
-  "Give me 5 local content ideas for our service area.",
-  "Explain this week's wins in simple language.",
-  "What should I check before spending more on ads?",
-  "Write a review reply draft for a happy customer."
+  "Do I need to run Google sync right now?",
+  "Write a review reply draft for a happy customer.",
+  "Create a Google Business post idea for our primary city.",
+  "Explain this week's workspace status in simple language.",
+  "What should I check next in Google Business?",
+  "What is blocking real weekly reporting?"
 ];
 
 export function GrowthChat({
@@ -33,7 +34,7 @@ export function GrowthChat({
     {
       role: "assistant",
       content:
-        `Ask me what to do next for ${companyName}. I can help with reviews, Google Business posts, local SEO, ad waste, project-photo content, and weekly wins.`
+        `Ask me what to do next for ${companyName}. I can help with Google Business reviews, sync status, project-photo content, local post drafts, and weekly operator priorities.`
     }
   ]);
   const [input, setInput] = useState("");
@@ -90,7 +91,7 @@ export function GrowthChat({
           Chat with your AI Growth Operator
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Ask for the next action, a local post idea, review reply, ad cleanup,
+          Ask for the next action, a Google Business post idea, a review reply,
           or a simple explanation of what is happening this week for your{" "}
           {industry.toLowerCase()} business.
         </p>

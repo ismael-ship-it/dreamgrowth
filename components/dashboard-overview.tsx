@@ -7,6 +7,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import { getAppReadiness } from "@/lib/app-readiness";
+import { getMeaningfulConnectionName } from "@/lib/integrations/display-name";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,7 @@ export function DashboardOverview() {
     {
       label: "Google connection",
       value: readiness.google.isConnected
-        ? readiness.google.displayName ?? "Connected"
+        ? getMeaningfulConnectionName(readiness.google.displayName) ?? "Connected"
         : "Not connected"
     },
     {
@@ -216,7 +217,9 @@ function buildHeroBody(
 function buildMissionSteps(readiness: ReturnType<typeof getAppReadiness>) {
   const googleConnected = readiness.google.isConnected;
   const googleLiveSync = Boolean(readiness.google.metadata.liveSync);
-  const googleDisplayName = readiness.google.displayName ?? "Google owner account";
+  const googleDisplayName =
+    getMeaningfulConnectionName(readiness.google.displayName) ??
+    "your Google owner account";
 
   const steps: MissionStep[] = [
     googleConnected

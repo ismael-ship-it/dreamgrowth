@@ -22,7 +22,8 @@ export async function generateDailyStackWithOpenAI(input: unknown) {
     return {
       mode: "local_fallback",
       tasks: generateContextAwareFallbackStack(input),
-      note: "OPENAI_API_KEY is not configured, so DreamGrowth used the local scoring engine."
+      note:
+        "OpenAI is not configured, so DreamGrowth ranked today's work with the local operator engine."
     };
   }
 
@@ -61,8 +62,8 @@ export async function generateDailyStackWithOpenAI(input: unknown) {
       tasks: generateContextAwareFallbackStack(input),
       note:
         error instanceof Error
-          ? `OpenAI call failed, so DreamGrowth used the local scoring engine. ${error.message}`
-          : "OpenAI call failed, so DreamGrowth used the local scoring engine."
+          ? `OpenAI is temporarily unavailable, so DreamGrowth used the local operator engine instead. ${error.message}`
+          : "OpenAI is temporarily unavailable, so DreamGrowth used the local operator engine instead."
     };
   }
 }

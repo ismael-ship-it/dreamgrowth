@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { getCompanyProfile } from "@/lib/company/profile";
 import { getAppReadiness } from "@/lib/app-readiness";
+import { getMeaningfulConnectionName } from "@/lib/integrations/display-name";
 import {
   type IntegrationConnection,
   type IntegrationProvider
@@ -45,9 +46,9 @@ export function IntegrationsSettings({
           Connect your accounts in a few clicks
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Start with Google so DreamGrowth can read your reviews, profile
-          activity, ad search terms, and visibility signals. Nothing gets posted
-          or changed without your approval.
+          Start with Google so DreamGrowth can read your reviews, locations, and
+          profile activity first. Nothing gets posted or changed without your
+          approval.
         </p>
         <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-muted-foreground">
           Day-to-day use should happen through connected accounts below. The app
@@ -71,7 +72,7 @@ export function IntegrationsSettings({
           setupMessage="Google connection is not configured yet. Add Google OAuth credentials once, then this becomes a one-click connect button."
           benefits={[
             "Read Google reviews",
-            "Find wasted ad spend",
+            "See locations and profile state",
             "Create today's Growth Stack"
           ]}
         />
@@ -240,7 +241,9 @@ function UserConnectionCard({
         {connection.isConnected ? (
           <div className="space-y-3 rounded-md border border-emerald-200 bg-emerald-50/80 p-3">
             <div className="text-sm font-bold text-emerald-950">
-              Connected as {connection.displayName ?? `${title} account`}
+              Connected as{" "}
+              {getMeaningfulConnectionName(connection.displayName) ??
+                `your ${title} account`}
             </div>
             {connection.connectedAt ? (
               <p className="text-xs font-semibold text-emerald-900/80">

@@ -190,77 +190,75 @@ export async function getWeeklyWinReport(): Promise<WeeklyWinReport> {
   }
 
   const moneySaved = 86;
-  const postsPublished = 3;
 
   return {
     id: "weekly-win-2026-05-11",
     mode: "guided_connected",
-    note: `Connected platforms: ${connectedProviders}. Connections persist locally, but this report still uses guided operator sample totals until the first live sync completes.`,
+    note: `Connected platforms: ${connectedProviders}. Connections persist locally, but DreamGrowth still avoids claiming weekly wins until the first live sync completes.`,
     weekStart: "2026-05-04",
     weekEnd: "2026-05-10",
-    headline: `This week DreamGrowth helped you save $${moneySaved} in wasted ad spend and publish ${postsPublished} local project posts.`,
-    moneySaved,
-    reviewsGained: 7,
-    postsPublished,
-    photosUploaded: 9,
-    visibilityImprovement: "+18%",
-    callsTrend: "+12%",
-    directionsTrend: "+3",
-    websiteClicksTrend: "+18%",
+    headline:
+      "Your accounts are connected, but the first live sync still needs to run before DreamGrowth can report real weekly wins.",
+    moneySaved: 0,
+    reviewsGained: 0,
+    postsPublished: 0,
+    photosUploaded: 0,
+    visibilityImprovement: "Pending first sync",
+    callsTrend: "Pending first sync",
+    directionsTrend: "Pending first sync",
+    websiteClicksTrend: "Pending first sync",
     completedTasks: [
-      "Reviewed 5 wasted Google Ads search terms",
-      "Approved 3 negative keyword suggestions",
-      "Responded to 4 Google reviews",
-      "Uploaded 9 real project photos",
-      "Published 3 local project posts"
+      "OAuth connection saved locally",
+      "Workspace is ready for the first live sync",
+      "Google Business will become the first trusted reporting lane after sync"
     ],
     metrics: [
       {
-        label: "Money Saved",
-        value: `$${moneySaved}`,
-        detail: "from avoided wasted searches"
+        label: "Connected platforms",
+        value: connectedProviders,
+        detail: "saved locally in DreamGrowth"
       },
       {
-        label: "Reviews Gained",
-        value: "7",
-        detail: "new review momentum"
+        label: "Weekly wins",
+        value: "Pending",
+        detail: "waiting on first live sync"
       },
       {
-        label: "Posts Published",
-        value: String(postsPublished),
-        detail: "from real project photos"
+        label: "Google reviews",
+        value: "Pending",
+        detail: "will appear after Google Business sync"
       },
       {
-        label: "Photos Uploaded",
-        value: "9",
-        detail: "fresh local proof"
+        label: "Locations",
+        value: "Pending",
+        detail: "will appear after Google Business sync"
       },
       {
-        label: "Visibility",
-        value: "+18%",
-        detail: "profile actions trend"
+        label: "Reporting mode",
+        value: "Connected",
+        detail: "not yet live"
       },
       {
-        label: "Calls",
-        value: "+12%",
-        detail: "vs previous week"
+        label: "Next move",
+        value: "Run sync",
+        detail: "unlock the first trusted weekly report"
       }
     ],
-    trendTitle: "Guided trend snapshot",
+    trendTitle: "What unlocks after sync",
     trends: [
       {
-        label: "Calls",
-        value: "+12%",
-        icon: "phone"
+        label: "Google reviews",
+        value: "Will load",
+        icon: "store"
       },
       {
-        label: "Directions",
-        value: "+3",
+        label: "Locations",
+        value: "Will load",
         icon: "route"
       },
       {
-        label: "Website clicks",
-        value: "+18%",
+        label: "Real weekly wins",
+        value: "Will unlock",
         icon: "click"
       }
     ]
