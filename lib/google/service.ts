@@ -48,6 +48,43 @@ type GoogleReview = {
   createdAt: string;
 };
 
+type GoogleSyncFailureReason =
+  | "token_expired"
+  | "refresh_token_missing"
+  | "api_forbidden"
+  | "api_not_enabled"
+  | "rate_limited"
+  | "no_accounts"
+  | "no_locations"
+  | "unknown";
+
+type GoogleSyncFailure = {
+  reason: GoogleSyncFailureReason;
+  stage: "token" | "accounts" | "locations" | "reviews" | "unknown";
+  status: number | null;
+  message: string;
+  hint: string;
+  helpUrl?: string | null;
+};
+
+class GoogleSyncError extends Error {
+  reason: GoogleSyncFailureReason;
+  stage: GoogleSyncFailure["stage"];
+  status: number | null;
+  hint: string;
+  helpUrl?: string | null;
+
+  constructor(input: GoogleSyncFailure) {
+    super(input.message);
+    this.name = "GoogleSyncError";
+    this.reason = input.reason;
+    this.stage = input.stage;
+    this.status = input.status;
+    this.hint = input.hint;
+    this.helpUrl = input.helpUrl;
+  }
+}
+
 const googleAccountsUrl =
   "https://mybusinessaccountmanagement.googleapis.com/v1/accounts";
 const googleBusinessInformationBaseUrl =
@@ -92,11 +129,7 @@ export async function getGoogleIntegrationSummary(): Promise<GoogleIntegrationSu
     return snapshot.summary;
   }
 
-  try {
-    return await syncGoogleIntegrationSummary();
-  } catch {
-    return createConnectedPendingGoogleSummary(connection.displayName);
-  }
+  return createConnectedPendingGoogleSummary(connection.displayName);
 }
 
 export async function syncGoogleIntegrationSummary() {
@@ -106,36 +139,54 @@ export async function syncGoogleIntegrationSummary() {
     throw new Error("Google is not connected.");
   }
 
-  const accessToken = await getValidGoogleAccessToken();
-  const { accounts, locations } = await fetchGoogleAccountsAndLocations(
-    accessToken
-  );
-  const reviews = await fetchGoogleReviews(accessToken, locations);
-  const companyProfile = getCompanyProfile();
-  const summary = buildGoogleSummary({
-    companyName: companyProfile.companyName,
-    primaryCity: companyProfile.primaryCity,
-    accounts,
-    locations,
-    reviews,
-    connectedDisplayName:
-      getMeaningfulConnectionName(connection.displayName) ??
-      "Connected owner account"
-  });
+  try {
+    const accessToken = await getValidGoogleAccessToken();
+    const { accounts, locations } = await fetchGoogleAccountsAndLocations(
+      accessToken
+    );
+    const reviews = await fetchGoogleReviews(accessToken, locations);
+    const companyProfile = getCompanyProfile();
+    const summary = buildGoogleSummary({
+      companyName: companyProfile.companyName,
+      primaryCity: companyProfile.primaryCity,
+      accounts,
+      locations,
+      reviews,
+      connectedDisplayName:
+        getMeaningfulConnectionName(connection.displayName) ??
+        "Connected owner account"
+    });
 
-  saveGoogleSnapshot(summary);
-  saveIntegrationConnection({
-    provider: "google",
-    status: "connected",
-    lastSyncAt: new Date().toISOString(),
-    metadata: {
-      liveSync: true,
-      accountCount: accounts.length,
-      locationCount: locations.length
-    }
-  });
+    saveGoogleSnapshot(summary);
+    saveIntegrationConnection({
+      provider: "google",
+      status: "connected",
+      lastSyncAt: new Date().toISOString(),
+      metadata: {
+        liveSync: true,
+        accountCount: accounts.length,
+        locationCount: locations.length,
+        lastSyncError: null,
+        lastSyncAttemptAt: new Date().toISOString()
+      }
+    });
 
-  return summary;
+    return summary;
+  } catch (error) {
+    const failure = normalizeGoogleSyncFailure(error);
+
+    saveIntegrationConnection({
+      provider: "google",
+      status: "connected",
+      metadata: {
+        liveSync: false,
+        lastSyncError: failure,
+        lastSyncAttemptAt: new Date().toISOString()
+      }
+    });
+
+    throw error;
+  }
 }
 
 export async function fetchGoogleBusinessSnapshot() {
@@ -181,7 +232,14 @@ async function getValidGoogleAccessToken() {
   }
 
   if (!credentials.refreshToken) {
-    throw new Error("Google refresh token is missing.");
+    throw new GoogleSyncError({
+      reason: "refresh_token_missing",
+      stage: "token",
+      status: null,
+      message: "Google refresh token is missing.",
+      hint: "Reconnect Google in Settings so DreamGrowth can store a fresh offline token.",
+      helpUrl: null
+    });
   }
 
   const refreshed = await refreshGoogleAccessToken(credentials.refreshToken);
@@ -240,7 +298,12 @@ async function fetchGoogleAccountsAndLocations(accessToken: string) {
   });
 
   if (!response.ok) {
-    throw new Error(`Google accounts fetch failed: ${response.status}`);
+    throw await createGoogleApiError({
+      response,
+      stage: "accounts",
+      fallbackMessage:
+        "DreamGrowth could not read Google Business accounts for this connected owner."
+    });
   }
 
   const data = (await response.json()) as {
@@ -258,6 +321,16 @@ async function fetchGoogleAccountsAndLocations(accessToken: string) {
       type: account.type
     })) ?? [];
 
+  if (!accounts.length) {
+    throw new GoogleSyncError({
+      reason: "no_accounts",
+      stage: "accounts",
+      status: 200,
+      message: "No Google Business accounts were returned for the connected Google user.",
+      hint: "Confirm this Google user has owner or manager access to at least one Business Profile."
+    });
+  }
+
   const locationGroups = await Promise.all(
     accounts.slice(0, 10).map(async (account) => {
       const url = `${googleBusinessInformationBaseUrl}/${account.resourceName}/locations?${new URLSearchParams({
@@ -272,7 +345,11 @@ async function fetchGoogleAccountsAndLocations(accessToken: string) {
       });
 
       if (!locationsResponse.ok) {
-        return [] as GoogleLocation[];
+        throw await createGoogleApiError({
+          response: locationsResponse,
+          stage: "locations",
+          fallbackMessage: `DreamGrowth could not read locations for Google Business account ${account.accountName}.`
+        });
       }
 
       const locationsData = (await locationsResponse.json()) as {
@@ -304,9 +381,21 @@ async function fetchGoogleAccountsAndLocations(accessToken: string) {
     })
   );
 
+  const locations = locationGroups.flat();
+
+  if (!locations.length) {
+    throw new GoogleSyncError({
+      reason: "no_locations",
+      stage: "locations",
+      status: 200,
+      message: "Google Business accounts were found, but no readable locations were returned.",
+      hint: "Confirm the connected Google user has access to the actual Business Profile locations and that the Business Profile APIs are enabled."
+    });
+  }
+
   return {
     accounts,
-    locations: locationGroups.flat()
+    locations
   };
 }
 
@@ -325,7 +414,11 @@ async function fetchGoogleReviews(
       });
 
       if (!response.ok) {
-        return [] as GoogleReview[];
+        throw await createGoogleApiError({
+          response,
+          stage: "reviews",
+          fallbackMessage: `DreamGrowth could not read reviews for location ${location.title}.`
+        });
       }
 
       const data = (await response.json()) as {
@@ -506,4 +599,162 @@ function isExpired(expiresAt: string | null) {
   }
 
   return new Date(expiresAt).getTime() <= Date.now() + 60_000;
+}
+
+async function createGoogleApiError(input: {
+  response: Response;
+  stage: GoogleSyncFailure["stage"];
+  fallbackMessage: string;
+}) {
+  const raw = await safeReadGoogleErrorBody(input.response);
+  const parsed = parseGoogleApiErrorPayload(raw);
+  const reason = classifyGoogleApiFailure(input.response.status, parsed, raw);
+
+  return new GoogleSyncError({
+    reason,
+    stage: input.stage,
+    status: input.response.status,
+    message: parsed?.message
+      ? `${input.fallbackMessage} ${parsed.message}`
+      : input.fallbackMessage,
+    hint: getGoogleSyncHint(reason, input.stage),
+    helpUrl: parsed?.helpUrl ?? null
+  });
+}
+
+async function safeReadGoogleErrorBody(response: Response) {
+  try {
+    const body = await response.text();
+    return body.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function classifyGoogleApiFailure(
+  status: number,
+  parsed: ReturnType<typeof parseGoogleApiErrorPayload>,
+  rawBody: string | null
+): GoogleSyncFailureReason {
+  const normalized = rawBody?.toLowerCase() ?? "";
+
+  if (
+    normalized.includes("service disabled") ||
+    normalized.includes("api has not been used") ||
+    parsed?.googleReason === "SERVICE_DISABLED" ||
+    parsed?.message.toLowerCase().includes("enable it by visiting")
+  ) {
+    return "api_not_enabled";
+  }
+
+  if (status === 401) {
+    return "token_expired";
+  }
+
+  if (status === 403) {
+    return "api_forbidden";
+  }
+
+  if (status === 404) {
+    return "api_not_enabled";
+  }
+
+  if (status === 429) {
+    return "rate_limited";
+  }
+
+  return "unknown";
+}
+
+function getGoogleSyncHint(
+  reason: GoogleSyncFailureReason,
+  stage: GoogleSyncFailure["stage"]
+) {
+  switch (reason) {
+    case "refresh_token_missing":
+      return "Reconnect Google in Settings to store a fresh offline token.";
+    case "token_expired":
+      return "Reconnect Google in Settings so DreamGrowth can refresh the token cleanly.";
+    case "api_forbidden":
+      return stage === "accounts"
+        ? "Check that the connected Google user can access Business Profile data and that the Business Profile Account Management API is enabled in Google Cloud."
+        : "Check that the Business Profile APIs are enabled in Google Cloud and that this Google user has access to the Business Profile locations.";
+    case "api_not_enabled":
+    return "Enable the required Google Business Profile APIs in Google Cloud, then run sync again.";
+    case "rate_limited":
+      return "Wait a minute and try Sync Google again.";
+    case "no_accounts":
+      return "Use a Google user that actually owns or manages a Business Profile account.";
+    case "no_locations":
+      return "Confirm the connected user can read the real Business Profile locations for this business.";
+    default:
+      return "Reconnect Google and check the Business Profile APIs and account access.";
+  }
+}
+
+function normalizeGoogleSyncFailure(error: unknown): GoogleSyncFailure {
+  if (error instanceof GoogleSyncError) {
+    return {
+      reason: error.reason,
+      stage: error.stage,
+      status: error.status,
+      message: error.message,
+      hint: error.hint
+      ,
+      helpUrl: error.helpUrl ?? null
+    };
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+
+  return {
+    reason: "unknown",
+    stage: "unknown",
+    status: null,
+    message,
+    hint: "Reconnect Google and check that the Business Profile APIs are enabled and the correct owner account is connected.",
+    helpUrl: null
+  };
+}
+
+function parseGoogleApiErrorPayload(rawBody: string | null) {
+  if (!rawBody) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawBody) as {
+      error?: {
+        message?: string;
+        details?: Array<{
+          ["@type"]?: string;
+          reason?: string;
+          links?: Array<{ url?: string }>;
+          metadata?: { activationUrl?: string };
+        }>;
+      };
+    };
+    const details = parsed.error?.details ?? [];
+    const errorInfo = details.find(
+      (detail) => detail["@type"] === "type.googleapis.com/google.rpc.ErrorInfo"
+    );
+    const help = details.find(
+      (detail) => detail["@type"] === "type.googleapis.com/google.rpc.Help"
+    );
+
+    return {
+      message: parsed.error?.message ?? rawBody,
+      googleReason: errorInfo?.reason ?? null,
+      helpUrl:
+        errorInfo?.metadata?.activationUrl ??
+        help?.links?.find((link) => link.url)?.url ??
+        null
+    };
+  } catch {
+    return {
+      message: rawBody,
+      googleReason: null,
+      helpUrl: null
+    };
+  }
 }

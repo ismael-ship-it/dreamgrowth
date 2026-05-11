@@ -17,6 +17,14 @@ export async function POST(request: Request) {
 }
 
 function classifyGoogleSyncError(error: unknown) {
+  if (typeof error === "object" && error && "reason" in error) {
+    const reason = error.reason;
+
+    if (typeof reason === "string" && reason.length) {
+      return reason;
+    }
+  }
+
   const message =
     error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
 
