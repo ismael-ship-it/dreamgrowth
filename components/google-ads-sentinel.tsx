@@ -2,11 +2,20 @@ import { Ban, CheckCircle2, CircleDollarSign, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { googleIntegrationSummary } from "@/lib/google/mock-data";
+import type { GoogleIntegrationSummary } from "@/lib/google/types";
+import type { IntegrationConnection } from "@/lib/integrations/store";
 
-export function GoogleAdsSentinel() {
-  const { wastedSpend, searchTerms, negativeKeywordSuggestions } =
-    googleIntegrationSummary.googleAds;
+export function GoogleAdsSentinel({
+  summary,
+  connection
+}: {
+  summary: GoogleIntegrationSummary;
+  connection: IntegrationConnection;
+}) {
+  const { wastedSpend, searchTerms, negativeKeywordSuggestions } = summary.googleAds;
+  const googleBusinessLive = Boolean(connection.metadata.liveSync);
+  const adsReady =
+    connection.isConnected && connection.scopes.includes("https://www.googleapis.com/auth/adwords");
 
   return (
     <div className="space-y-5">
@@ -23,6 +32,20 @@ export function GoogleAdsSentinel() {
           applied in Google Ads.
         </p>
       </section>
+
+      {!connection.isConnected ? (
+        <EmptyState text="Connect Google first before DreamGrowth can read any Google Ads account context." />
+      ) : !adsReady ? (
+        <EmptyState text="The connected Google account was not authorized with Google Ads access yet." />
+      ) : !searchTerms.length && !negativeKeywordSuggestions.length ? (
+        <EmptyState
+          text={
+            googleBusinessLive
+              ? "Google is connected, but Google Ads live sync is not wired yet. DreamGrowth should not guess wasted spend or negative keywords here."
+              : "Run the first Google sync first. After that, Google Ads can be added as its own live sync layer."
+          }
+        />
+      ) : null}
 
       <Card>
         <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -45,26 +68,30 @@ export function GoogleAdsSentinel() {
             <CardTitle>Search Terms</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {searchTerms.map((term) => (
-              <div key={term.id} className="rounded-md border border-border p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-sm font-bold">{term.searchTerm}</h3>
-                  <Badge
-                    variant={term.decision === "keep" ? "success" : "warning"}
-                  >
-                    {term.decision}
-                  </Badge>
+            {searchTerms.length ? (
+              searchTerms.map((term) => (
+                <div key={term.id} className="rounded-md border border-border p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-bold">{term.searchTerm}</h3>
+                    <Badge
+                      variant={term.decision === "keep" ? "success" : "warning"}
+                    >
+                      {term.decision}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {term.lowIntentReason}
+                  </p>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                    <Metric label="Cost" value={`$${term.cost}`} />
+                    <Metric label="Clicks" value={String(term.clicks)} />
+                    <Metric label="Leads" value={String(term.conversions)} />
+                  </div>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {term.lowIntentReason}
-                </p>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
-                  <Metric label="Cost" value={`$${term.cost}`} />
-                  <Metric label="Clicks" value={String(term.clicks)} />
-                  <Metric label="Leads" value={String(term.conversions)} />
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <EmptyBody text="No live Google Ads search terms are available yet." />
+            )}
           </CardContent>
         </Card>
 
@@ -73,34 +100,38 @@ export function GoogleAdsSentinel() {
             <CardTitle>Negative Keyword Suggestions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {negativeKeywordSuggestions.map((suggestion) => (
-              <div
-                key={suggestion.id}
-                className="rounded-md border border-border p-4"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="warning">
-                    <Ban className="mr-1 h-3 w-3" />
-                    {suggestion.keyword}
-                  </Badge>
-                  <Badge variant="outline">{suggestion.matchType}</Badge>
+            {negativeKeywordSuggestions.length ? (
+              negativeKeywordSuggestions.map((suggestion) => (
+                <div
+                  key={suggestion.id}
+                  className="rounded-md border border-border p-4"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="warning">
+                      <Ban className="mr-1 h-3 w-3" />
+                      {suggestion.keyword}
+                    </Badge>
+                    <Badge variant="outline">{suggestion.matchType}</Badge>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    {suggestion.reason}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <Metric label="Waste" value={`$${suggestion.estimatedWaste}`} />
+                    <Metric
+                      label="Confidence"
+                      value={`${suggestion.confidenceScore}%`}
+                    />
+                  </div>
+                  <Button className="mt-4" size="sm">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Approve Negative
+                  </Button>
                 </div>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                  {suggestion.reason}
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                  <Metric label="Waste" value={`$${suggestion.estimatedWaste}`} />
-                  <Metric
-                    label="Confidence"
-                    value={`${suggestion.confidenceScore}%`}
-                  />
-                </div>
-                <Button className="mt-4" size="sm">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Approve Negative
-                </Button>
-              </div>
-            ))}
+              ))
+            ) : (
+              <EmptyBody text="Negative keyword suggestions will appear only after Google Ads live sync is implemented." />
+            )}
           </CardContent>
         </Card>
       </section>
@@ -114,6 +145,24 @@ export function GoogleAdsSentinel() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <Card>
+      <CardContent className="p-4 text-sm font-semibold leading-6 text-muted-foreground">
+        {text}
+      </CardContent>
+    </Card>
+  );
+}
+
+function EmptyBody({ text }: { text: string }) {
+  return (
+    <div className="rounded-md border border-dashed border-border p-4 text-sm font-semibold leading-6 text-muted-foreground">
+      {text}
     </div>
   );
 }

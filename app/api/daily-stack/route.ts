@@ -18,7 +18,9 @@ export async function GET() {
     meta,
     connection: {
       googleConnected: googleConnection.isConnected,
-      metaConnected: metaConnection.isConnected
+      metaConnected: metaConnection.isConnected,
+      googleLiveSync: Boolean(googleConnection.metadata.liveSync),
+      metaLiveSync: Boolean(metaConnection.metadata.liveSync)
     },
     approvalRule: "AI recommends. Owner approves. DreamGrowth executes."
   });

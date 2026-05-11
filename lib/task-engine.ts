@@ -270,10 +270,85 @@ export function generateDailyGrowthStack(signals: GrowthSignal[]): GrowthTask[] 
 }
 
 export function generateContextAwareFallbackStack(input: unknown): GrowthTask[] {
-  const connection = readConnectionFlags(input);
+  const context = readFallbackContext(input);
 
-  if (connection.googleConnected || connection.metaConnected) {
-    return generateDailyGrowthStack(mockGrowthSignals);
+  if (context.googleConnected || context.metaConnected) {
+    if (!context.googleLiveSync && !context.metaLiveSync) {
+      return [
+        createSetupTask({
+          id: "sync-google-first",
+          taskType: "review_response",
+          title: "Run the first Google sync",
+          reason:
+            "Google may be connected, but DreamGrowth still does not have a trusted live snapshot to work from.",
+          suggestedAction:
+            "Open Google Business and run Sync Google now before acting on reviews, posts, traffic, or ad insights.",
+          impactScore: 90,
+          urgencyScore: 88,
+          confidenceScore: 97,
+          sourcePlatform: "google_business",
+          relatedRecordId: "sync-google-first"
+        }),
+        createSetupTask({
+          id: "avoid-fake-ads",
+          taskType: "wasted_spend",
+          title: "Do not act on Google Ads recommendations yet",
+          reason:
+            "Google Ads live sync is not wired yet, so DreamGrowth should not claim wasted spend or negative keywords as fact.",
+          suggestedAction:
+            "Treat Ads, GA4, and Search Console as pending until their live syncs are built.",
+          impactScore: 84,
+          urgencyScore: 79,
+          confidenceScore: 98,
+          sourcePlatform: "google_ads",
+          relatedRecordId: "avoid-fake-ads"
+        }),
+        createSetupTask({
+          id: "sync-meta-if-needed",
+          taskType: "meta_post",
+          title: "Run the first Meta sync if you use Meta",
+          reason:
+            "Meta can already save account structure, but the workspace needs one sync before it can guide action honestly.",
+          suggestedAction:
+            "Open Meta and run Sync Meta now if Facebook or Instagram matters for this business.",
+          impactScore: 62,
+          urgencyScore: 48,
+          confidenceScore: 94,
+          sourcePlatform: "meta",
+          relatedRecordId: "sync-meta-if-needed"
+        }),
+        createSetupTask({
+          id: "use-growth-chat-carefully",
+          taskType: "weekly_report",
+          title: "Use Growth Chat for planning, not reporting",
+          reason:
+            "Without live sync, the safest use of DreamGrowth is workflow planning and setup guidance.",
+          suggestedAction:
+            "Ask for next steps, connection guidance, or drafts, but avoid treating missing data as confirmed performance.",
+          impactScore: 70,
+          urgencyScore: 58,
+          confidenceScore: 96,
+          sourcePlatform: "ai",
+          relatedRecordId: "use-growth-chat-carefully"
+        }),
+        createSetupTask({
+          id: "connect-ai-and-repeat",
+          taskType: "photo_upload",
+          title: "Retry Daily Stack after sync",
+          reason:
+            "Once Google sync succeeds, DreamGrowth can create more useful operator actions based on real workspace context.",
+          suggestedAction:
+            "Run Daily Stack again after the first live sync finishes.",
+          impactScore: 60,
+          urgencyScore: 50,
+          confidenceScore: 94,
+          sourcePlatform: "manual",
+          relatedRecordId: "connect-ai-and-repeat"
+        })
+      ];
+    }
+
+    return createLiveFoundationTasks(context);
   }
 
   return [
@@ -472,18 +547,123 @@ function createSetupTask(input: {
   };
 }
 
-function readConnectionFlags(input: unknown) {
+function readFallbackContext(input: unknown) {
   const value = input as {
     connection?: {
       googleConnected?: boolean;
       metaConnected?: boolean;
+      googleLiveSync?: boolean;
+      metaLiveSync?: boolean;
+    };
+    google?: {
+      googleBusiness?: {
+        reviews?: Array<{ id: string }>;
+        postDrafts?: Array<{ id: string }>;
+        metrics?: Array<{ value?: string }>;
+      };
+    };
+    meta?: {
+      facebookPages?: Array<{ id: string }>;
+      instagramAccounts?: Array<{ id: string }>;
+      leads?: Array<{ id: string }>;
+      drafts?: Array<{ id: string }>;
     };
   };
 
   return {
     googleConnected: Boolean(value?.connection?.googleConnected),
-    metaConnected: Boolean(value?.connection?.metaConnected)
+    metaConnected: Boolean(value?.connection?.metaConnected),
+    googleLiveSync: Boolean(value?.connection?.googleLiveSync),
+    metaLiveSync: Boolean(value?.connection?.metaLiveSync),
+    googleReviews: value?.google?.googleBusiness?.reviews?.length ?? 0,
+    googlePostDrafts: value?.google?.googleBusiness?.postDrafts?.length ?? 0,
+    metaPages: value?.meta?.facebookPages?.length ?? 0,
+    metaInstagramAccounts: value?.meta?.instagramAccounts?.length ?? 0,
+    metaLeads: value?.meta?.leads?.length ?? 0,
+    metaDrafts: value?.meta?.drafts?.length ?? 0
   };
+}
+
+function createLiveFoundationTasks(
+  context: ReturnType<typeof readFallbackContext>
+) {
+  const tasks: GrowthTask[] = [];
+
+  if (context.googleLiveSync && context.googleReviews > 0) {
+    tasks.push(
+      createSetupTask({
+        id: "review-live-google-reviews",
+        taskType: "review_response",
+        title: `Review ${context.googleReviews} synced Google review${context.googleReviews === 1 ? "" : "s"}`,
+        reason:
+          "DreamGrowth now has live Google review data, so owner follow-up can be based on real customer feedback.",
+        suggestedAction:
+          "Open Google Business and review the synced reviews before drafting or approving replies.",
+        impactScore: 88,
+        urgencyScore: 83,
+        confidenceScore: 95,
+        sourcePlatform: "google_business",
+        relatedRecordId: "review-live-google-reviews"
+      })
+    );
+  }
+
+  if (context.googleLiveSync && context.googlePostDrafts > 0) {
+    tasks.push(
+      createSetupTask({
+        id: "review-live-google-posts",
+        taskType: "google_business_post",
+        title: `Review ${context.googlePostDrafts} Google Business draft${context.googlePostDrafts === 1 ? "" : "s"}`,
+        reason:
+          "There is now real Google Business location context available for post review.",
+        suggestedAction:
+          "Open Google Business and confirm the post draft matches the right location and project.",
+        impactScore: 74,
+        urgencyScore: 66,
+        confidenceScore: 92,
+        sourcePlatform: "google_business",
+        relatedRecordId: "review-live-google-posts"
+      })
+    );
+  }
+
+  if (context.metaLiveSync && context.metaPages > 0) {
+    tasks.push(
+      createSetupTask({
+        id: "review-live-meta-foundation",
+        taskType: "meta_post",
+        title: `Review ${context.metaPages} synced Meta Page${context.metaPages === 1 ? "" : "s"}`,
+        reason:
+          "Meta account structure is now live, so the workspace can be verified before content or lead tools are added.",
+        suggestedAction:
+          "Open Meta and confirm the connected Pages and Instagram accounts are the right ones.",
+        impactScore: 61,
+        urgencyScore: 52,
+        confidenceScore: 93,
+        sourcePlatform: "meta",
+        relatedRecordId: "review-live-meta-foundation"
+      })
+    );
+  }
+
+  tasks.push(
+    createSetupTask({
+      id: "ads-live-pending",
+      taskType: "wasted_spend",
+      title: "Keep Google Ads insights in pending mode",
+      reason:
+        "DreamGrowth still does not have Google Ads live sync, so any ad optimization should be treated as manual review work only.",
+      suggestedAction:
+        "Do not approve ad-budget or negative-keyword recommendations here until the Ads sync layer is built.",
+      impactScore: 82,
+      urgencyScore: 76,
+      confidenceScore: 98,
+      sourcePlatform: "google_ads",
+      relatedRecordId: "ads-live-pending"
+    })
+  );
+
+  return tasks.slice(0, 5);
 }
 
 function clampScore(value: number) {

@@ -1,5 +1,4 @@
 import { getCompanyProfile } from "@/lib/company/profile";
-import { googleIntegrationSummary } from "@/lib/google/mock-data";
 import type {
   GoogleApprovalAction,
   GoogleBusinessMetric,
@@ -92,12 +91,7 @@ export async function getGoogleIntegrationSummary(): Promise<GoogleIntegrationSu
   try {
     return await syncGoogleIntegrationSummary();
   } catch {
-    return {
-      ...googleIntegrationSummary,
-      approvalRule: `${googleIntegrationSummary.approvalRule} Google is connected as ${
-        connection.displayName ?? "Google account"
-      }, but the first live sync has not completed yet.`
-    };
+    return createConnectedPendingGoogleSummary(connection.displayName);
   }
 }
 
@@ -395,12 +389,54 @@ function buildGoogleSummary(input: {
       reviews,
       postDrafts
     },
-    googleAds: googleIntegrationSummary.googleAds,
-    ga4: googleIntegrationSummary.ga4,
-    searchConsole: googleIntegrationSummary.searchConsole,
+    googleAds: {
+      wastedSpend: 0,
+      searchTerms: [],
+      negativeKeywordSuggestions: []
+    },
+    ga4: {
+      metrics: []
+    },
+    searchConsole: {
+      metrics: []
+    },
     approvalRule:
-      "Google Business accounts, locations, and reviews are now read from the live Google connection. Google Ads, GA4, and Search Console remain guided sample mode until their dedicated syncs are wired."
+      "Google Business accounts, locations, and reviews are now read from the live Google connection. Google Ads, GA4, and Search Console are not synced yet, so DreamGrowth should not claim live performance insights from them."
   };
+}
+
+function createConnectedPendingGoogleSummary(displayName?: string | null) {
+  return {
+    googleBusiness: {
+      metrics: [
+        {
+          label: "Connection",
+          value: "Ready",
+          trend: displayName ?? "Google account connected"
+        },
+        {
+          label: "Live sync",
+          value: "Pending",
+          trend: "Run the first Google sync"
+        }
+      ],
+      reviews: [],
+      postDrafts: []
+    },
+    googleAds: {
+      wastedSpend: 0,
+      searchTerms: [],
+      negativeKeywordSuggestions: []
+    },
+    ga4: {
+      metrics: []
+    },
+    searchConsole: {
+      metrics: []
+    },
+    approvalRule:
+      "Google is connected, but DreamGrowth does not have a completed live sync yet. Until the first sync succeeds, the app should not present Google reviews, ads, GA4, or Search Console insights as real data."
+  } satisfies GoogleIntegrationSummary;
 }
 
 function mapGoogleStarRating(value?: string) {

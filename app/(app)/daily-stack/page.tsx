@@ -18,7 +18,9 @@ export default async function DailyStackPage() {
     meta,
     connection: {
       googleConnected: googleConnection.isConnected,
-      metaConnected: metaConnection.isConnected
+      metaConnected: metaConnection.isConnected,
+      googleLiveSync: Boolean(googleConnection.metadata.liveSync),
+      metaLiveSync: Boolean(metaConnection.metadata.liveSync)
     },
     approvalRule: "DreamGrowth recommends. Owner approves before any external action."
   });
