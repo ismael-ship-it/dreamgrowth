@@ -1,6 +1,7 @@
 import type * as React from "react";
 import Link from "next/link";
 import {
+  RefreshCw,
   MessageSquareText,
   Phone,
   Route,
@@ -16,10 +17,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function GoogleBusinessManager({
   summary,
-  connection
+  connection,
+  syncStatus
 }: {
   summary: GoogleIntegrationSummary;
   connection: IntegrationConnection;
+  syncStatus?: "success" | "failed";
 }) {
   const { metrics, reviews, postDrafts } = summary.googleBusiness;
   const accounts = Array.isArray(connection.metadata.accounts)
@@ -48,6 +51,20 @@ export function GoogleBusinessManager({
         </div>
       </section>
 
+      {syncStatus ? (
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm font-semibold ${
+            syncStatus === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+              : "border-amber-200 bg-amber-50 text-amber-950"
+          }`}
+        >
+          {syncStatus === "success"
+            ? "Google sync completed. The page is now using the latest live Google Business snapshot available to DreamGrowth."
+            : "Google sync failed. Reconnect the account or check whether the Google Business APIs are enabled for this OAuth app."}
+        </div>
+      ) : null}
+
       {connection.isConnected ? (
         <Card>
           <CardContent className="space-y-2 p-4">
@@ -70,6 +87,12 @@ export function GoogleBusinessManager({
             <p className="text-xs font-semibold text-muted-foreground">
               {summary.approvalRule}
             </p>
+            <form action="/api/google/sync" method="post" className="pt-2">
+              <Button type="submit" size="sm">
+                <RefreshCw className="h-4 w-4" />
+                Sync Google now
+              </Button>
+            </form>
           </CardContent>
         </Card>
       ) : (
@@ -117,32 +140,36 @@ export function GoogleBusinessManager({
                 <CardTitle>Review Response Drafts</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {reviews.map((review) => (
-                  <div key={review.id} className="rounded-md border border-border p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="success">
-                        <Star className="mr-1 h-3 w-3" />
-                        {review.rating} stars
-                      </Badge>
-                      <Badge variant="warning">Approval required</Badge>
+                {reviews.length ? (
+                  reviews.map((review) => (
+                    <div key={review.id} className="rounded-md border border-border p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="success">
+                          <Star className="mr-1 h-3 w-3" />
+                          {review.rating} stars
+                        </Badge>
+                        <Badge variant="warning">Approval required</Badge>
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                        {review.comment}
+                      </p>
+                      <p className="mt-3 text-sm font-semibold leading-6">
+                        {review.responseDraft}
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Button size="sm">
+                          <MessageSquareText className="h-4 w-4" />
+                          Approve Reply
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          Edit
+                        </Button>
+                      </div>
                     </div>
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      {review.comment}
-                    </p>
-                    <p className="mt-3 text-sm font-semibold leading-6">
-                      {review.responseDraft}
-                    </p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Button size="sm">
-                        <MessageSquareText className="h-4 w-4" />
-                        Approve Reply
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <EmptyMessage text="No live Google reviews were returned yet for the connected locations." />
+                )}
               </CardContent>
             </Card>
 
@@ -151,21 +178,25 @@ export function GoogleBusinessManager({
                 <CardTitle>GBP Post Drafts</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {postDrafts.map((post) => (
-                  <div key={post.id} className="rounded-md border border-border p-4">
-                    <Badge variant="warning">Pending approval</Badge>
-                    <h3 className="mt-3 text-base font-bold">{post.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      {post.body}
-                    </p>
-                    <p className="mt-3 text-xs font-semibold text-muted-foreground">
-                      Source: {post.sourcePhoto}
-                    </p>
-                    <Button className="mt-4" size="sm">
-                      Approve Post
-                    </Button>
-                  </div>
-                ))}
+                {postDrafts.length ? (
+                  postDrafts.map((post) => (
+                    <div key={post.id} className="rounded-md border border-border p-4">
+                      <Badge variant="warning">Pending approval</Badge>
+                      <h3 className="mt-3 text-base font-bold">{post.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {post.body}
+                      </p>
+                      <p className="mt-3 text-xs font-semibold text-muted-foreground">
+                        Source: {post.sourcePhoto}
+                      </p>
+                      <Button className="mt-4" size="sm">
+                        Approve Post
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <EmptyMessage text="No Google Business post drafts are ready yet. The live sync layer is focused on accounts, locations, and reviews first." />
+                )}
               </CardContent>
             </Card>
           </section>
@@ -177,6 +208,14 @@ export function GoogleBusinessManager({
           </section>
         </>
       ) : null}
+    </div>
+  );
+}
+
+function EmptyMessage({ text }: { text: string }) {
+  return (
+    <div className="rounded-md border border-dashed border-border p-4 text-sm font-semibold leading-6 text-muted-foreground">
+      {text}
     </div>
   );
 }

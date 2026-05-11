@@ -26,6 +26,8 @@ type SetupTask = {
 
 export function DashboardOverview() {
   const readiness = getAppReadiness();
+  const googleLiveSync = Boolean(readiness.google.metadata.liveSync);
+  const metaLiveSync = Boolean(readiness.meta.metadata.liveSync);
   const googleState = summarizeProvider(
     readiness.google.isConnected,
     readiness.googleCredentialsReady,
@@ -37,8 +39,9 @@ export function DashboardOverview() {
     readiness.meta.displayName
   );
   const setupTasks = buildSetupTasks(readiness);
-  const heroTitle = buildHeroTitle(readiness);
-  const heroBody = buildHeroBody(readiness);
+  const heroTitle = buildHeroTitle(readiness, googleLiveSync, metaLiveSync);
+  const heroBody = buildHeroBody(readiness, googleLiveSync, metaLiveSync);
+  const liveSyncCount = [googleLiveSync, metaLiveSync].filter(Boolean).length;
   const stats = [
     {
       label: "Google",
@@ -73,15 +76,31 @@ export function DashboardOverview() {
           ? "Operable"
           : "Setup",
       detail:
-        readiness.google.isConnected || readiness.meta.isConnected
-          ? "connections persist locally"
+        googleLiveSync || metaLiveSync
+          ? "sync snapshots persist locally"
+          : readiness.google.isConnected || readiness.meta.isConnected
+            ? "connections persist locally"
           : "connect Google first",
       icon: Workflow
     },
     {
       label: "Data Mode",
-      value: "Guided sample",
-      detail: "live sync still pending",
+      value:
+        liveSyncCount > 0
+          ? "Partial live"
+          : readiness.google.isConnected || readiness.meta.isConnected
+            ? "Connected base"
+            : "Setup",
+      detail:
+        liveSyncCount === 2
+          ? "Google + Meta live foundations"
+          : googleLiveSync
+            ? "Google Business live, more next"
+            : metaLiveSync
+              ? "Meta structure live, more next"
+              : readiness.google.isConnected || readiness.meta.isConnected
+                ? "first live sync still pending"
+                : "connect a platform first",
       icon: Sparkles
     }
   ];
@@ -218,32 +237,58 @@ function summarizeProvider(
   };
 }
 
-function buildHeroTitle(readiness: ReturnType<typeof getAppReadiness>) {
+function buildHeroTitle(
+  readiness: ReturnType<typeof getAppReadiness>,
+  googleLiveSync: boolean,
+  metaLiveSync: boolean
+) {
   if (!readiness.google.isConnected) {
     return "Connect Google first";
+  }
+
+  if (!googleLiveSync) {
+    return "Run your first live Google sync";
   }
 
   if (!readiness.aiReady) {
     return "Add your AI key to unlock the operator";
   }
 
+  if (readiness.meta.isConnected && !metaLiveSync) {
+    return "Finish the live Meta foundation";
+  }
+
   return "DreamGrowth is ready for operator work";
 }
 
-function buildHeroBody(readiness: ReturnType<typeof getAppReadiness>) {
+function buildHeroBody(
+  readiness: ReturnType<typeof getAppReadiness>,
+  googleLiveSync: boolean,
+  metaLiveSync: boolean
+) {
   if (!readiness.google.isConnected) {
     return "Google is the highest-value first connection because it unlocks reviews, Google Business signals, search terms, and the strongest local-intent visibility inputs.";
+  }
+
+  if (!googleLiveSync) {
+    return "Google is connected, but the first live snapshot still needs to run. Open the Google Business page and sync once so DreamGrowth can store real locations, reviews, and account context.";
   }
 
   if (!readiness.aiReady) {
     return "Your account connections are coming together. Add the AI key next so Daily Stack and Growth Chat can produce ranked actions instead of falling back to local defaults.";
   }
 
-  return "The app is now protected, connections persist locally, and DreamGrowth can guide the owner through daily actions. The remaining gap is live data sync replacing guided sample cards.";
+  if (readiness.meta.isConnected && !metaLiveSync) {
+    return "Google is already syncing live. Run Meta sync next so Pages, Instagram accounts, and ad accounts become part of the same operator workspace.";
+  }
+
+  return "Owner access, persistent connections, and the first live sync foundation are in place. The next layer is replacing guided Ads, GA4, Search Console, and Meta lead reporting with live data.";
 }
 
 function buildSetupTasks(readiness: ReturnType<typeof getAppReadiness>) {
   const tasks: SetupTask[] = [];
+  const googleLiveSync = Boolean(readiness.google.metadata.liveSync);
+  const metaLiveSync = Boolean(readiness.meta.metadata.liveSync);
 
   if (!readiness.google.isConnected) {
     tasks.push({
@@ -259,6 +304,19 @@ function buildSetupTasks(readiness: ReturnType<typeof getAppReadiness>) {
     });
   }
 
+  if (readiness.google.isConnected && !googleLiveSync) {
+    tasks.push({
+      title: "Run the first Google sync",
+      reason:
+        "Your Google connection is saved. Sync once to pull real Business accounts, locations, and reviews into DreamGrowth.",
+      badge: "Live data",
+      badgeVariant: "success" as const,
+      href: "/google-business",
+      cta: "Open Google sync",
+      ctaVariant: "default" as const
+    });
+  }
+
   if (!readiness.aiReady) {
     tasks.push({
       title: "Finish the AI setup",
@@ -267,6 +325,19 @@ function buildSetupTasks(readiness: ReturnType<typeof getAppReadiness>) {
       badgeVariant: "warning" as const,
       href: "/settings",
       cta: "Open Admin Setup",
+      ctaVariant: "outline" as const
+    });
+  }
+
+  if (readiness.meta.isConnected && !metaLiveSync) {
+    tasks.push({
+      title: "Run the first Meta sync",
+      reason:
+        "Meta is already connected. Sync once to save live Pages, Instagram accounts, and ad accounts for the operator workspace.",
+      badge: "Live data",
+      badgeVariant: "success" as const,
+      href: "/meta",
+      cta: "Open Meta sync",
       ctaVariant: "outline" as const
     });
   }
@@ -300,7 +371,8 @@ function buildSetupTasks(readiness: ReturnType<typeof getAppReadiness>) {
   if (tasks.length === 0) {
     tasks.push({
       title: "Run today's Daily Stack",
-      reason: "The core setup is in place. Use Daily Stack to pressure-test the operator workflow and decide the next high-impact action.",
+      reason:
+        "The core setup and live sync foundation are in place. Use Daily Stack to pressure-test the operator workflow and decide the next high-impact action.",
       badge: "Ready",
       badgeVariant: "success" as const,
       href: "/daily-stack",

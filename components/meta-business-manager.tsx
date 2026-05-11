@@ -7,6 +7,7 @@ import {
   Mail,
   Megaphone,
   MessageCircle,
+  RefreshCw,
   ShieldCheck,
   UserRound
 } from "lucide-react";
@@ -18,10 +19,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function MetaBusinessManager({
   summary,
-  connection
+  connection,
+  syncStatus
 }: {
   summary: MetaIntegrationSummary;
   connection: IntegrationConnection;
+  syncStatus?: "success" | "failed";
 }) {
   const {
     account,
@@ -57,6 +60,20 @@ export function MetaBusinessManager({
         </div>
       </section>
 
+      {syncStatus ? (
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm font-semibold ${
+            syncStatus === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+              : "border-amber-200 bg-amber-50 text-amber-950"
+          }`}
+        >
+          {syncStatus === "success"
+            ? "Meta sync completed. Pages, Instagram accounts, and ad accounts were refreshed from the live connection."
+            : "Meta sync failed. Reconnect the account or confirm the requested Meta permissions are approved in your app."}
+        </div>
+      ) : null}
+
       {connection.isConnected ? (
         <Card>
           <CardContent className="space-y-2 p-4">
@@ -70,6 +87,12 @@ export function MetaBusinessManager({
             <p className="text-xs font-semibold text-muted-foreground">
               {summary.approvalRule}
             </p>
+            <form action="/api/meta/sync" method="post" className="pt-2">
+              <Button type="submit" size="sm">
+                <RefreshCw className="h-4 w-4" />
+                Sync Meta now
+              </Button>
+            </form>
           </CardContent>
         </Card>
       ) : (
@@ -129,30 +152,34 @@ export function MetaBusinessManager({
                 <CardTitle>Lead Follow-Up</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {leads.map((lead) => (
-                  <div key={lead.id} className="rounded-md border border-border p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="warning">{lead.status}</Badge>
-                      <Badge variant="outline">{lead.source}</Badge>
-                    </div>
-                    <div className="mt-3 flex items-start gap-3">
-                      <UserRound className="mt-0.5 h-5 w-5 text-accent-foreground" />
-                      <div>
-                        <h3 className="text-sm font-bold">{lead.name}</h3>
-                        <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                          {lead.serviceInterest}
-                        </p>
-                        <p className="mt-1 text-xs font-semibold text-muted-foreground">
-                          Waiting {lead.ageMinutes} minutes
-                        </p>
+                {leads.length ? (
+                  leads.map((lead) => (
+                    <div key={lead.id} className="rounded-md border border-border p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="warning">{lead.status}</Badge>
+                        <Badge variant="outline">{lead.source}</Badge>
                       </div>
+                      <div className="mt-3 flex items-start gap-3">
+                        <UserRound className="mt-0.5 h-5 w-5 text-accent-foreground" />
+                        <div>
+                          <h3 className="text-sm font-bold">{lead.name}</h3>
+                          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                            {lead.serviceInterest}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-muted-foreground">
+                            Waiting {lead.ageMinutes} minutes
+                          </p>
+                        </div>
+                      </div>
+                      <Button className="mt-4" size="sm">
+                        <Mail className="h-4 w-4" />
+                        Create Follow-Up Task
+                      </Button>
                     </div>
-                    <Button className="mt-4" size="sm">
-                      <Mail className="h-4 w-4" />
-                      Create Follow-Up Task
-                    </Button>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <EmptyMessage text="No live Meta leads are synced yet. The current live layer is focused on accounts, pages, Instagram, and ad accounts first." />
+                )}
               </CardContent>
             </Card>
 
@@ -161,34 +188,38 @@ export function MetaBusinessManager({
                 <CardTitle>AI Social Drafts</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {drafts.map((draft) => (
-                  <div key={draft.id} className="rounded-md border border-border p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="warning">Pending approval</Badge>
-                      <Badge variant="outline">{draft.target}</Badge>
+                {drafts.length ? (
+                  drafts.map((draft) => (
+                    <div key={draft.id} className="rounded-md border border-border p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="warning">Pending approval</Badge>
+                        <Badge variant="outline">{draft.target}</Badge>
+                      </div>
+                      <h3 className="mt-3 text-base font-bold">{draft.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {draft.body}
+                      </p>
+                      <p className="mt-3 text-xs font-semibold text-muted-foreground">
+                        Source: {draft.sourcePhoto}
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Button size="sm">
+                          <CheckCircle2 className="h-4 w-4" />
+                          Approve
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <CalendarClock className="h-4 w-4" />
+                          Schedule
+                        </Button>
+                      </div>
                     </div>
-                    <h3 className="mt-3 text-base font-bold">{draft.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                      {draft.body}
-                    </p>
-                    <p className="mt-3 text-xs font-semibold text-muted-foreground">
-                      Source: {draft.sourcePhoto}
-                    </p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Button size="sm">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Approve
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        Edit
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <CalendarClock className="h-4 w-4" />
-                        Schedule
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <EmptyMessage text="No Meta social drafts are stored yet. This area will fill once content drafting is connected to saved media and approvals." />
+                )}
               </CardContent>
             </Card>
           </section>
@@ -199,24 +230,28 @@ export function MetaBusinessManager({
                 <CardTitle>Campaign Signals</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {campaigns.map((campaign) => (
-                  <div
-                    key={campaign.id}
-                    className="rounded-md border border-border p-4"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="text-sm font-bold">{campaign.name}</h3>
-                      <Badge variant="outline">{campaign.objective}</Badge>
+                {campaigns.length ? (
+                  campaigns.map((campaign) => (
+                    <div
+                      key={campaign.id}
+                      className="rounded-md border border-border p-4"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h3 className="text-sm font-bold">{campaign.name}</h3>
+                        <Badge variant="outline">{campaign.objective}</Badge>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <MiniMetric label="Spend" value={`$${campaign.spend}`} />
+                        <MiniMetric label="Leads" value={String(campaign.leads)} />
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                        {campaign.note}
+                      </p>
                     </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <MiniMetric label="Spend" value={`$${campaign.spend}`} />
-                      <MiniMetric label="Leads" value={String(campaign.leads)} />
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      {campaign.note}
-                    </p>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <EmptyMessage text="Live ad accounts are connected, but campaign-level sync has not been added yet." />
+                )}
               </CardContent>
             </Card>
 
@@ -245,6 +280,14 @@ export function MetaBusinessManager({
           </section>
         </>
       ) : null}
+    </div>
+  );
+}
+
+function EmptyMessage({ text }: { text: string }) {
+  return (
+    <div className="rounded-md border border-dashed border-border p-4 text-sm font-semibold leading-6 text-muted-foreground">
+      {text}
     </div>
   );
 }

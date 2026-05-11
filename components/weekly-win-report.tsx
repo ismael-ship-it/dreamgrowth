@@ -1,11 +1,45 @@
 import type * as React from "react";
-import { CheckCircle2, MousePointerClick, Phone, Route, Trophy } from "lucide-react";
+import {
+  CheckCircle2,
+  Megaphone,
+  MousePointerClick,
+  Phone,
+  Route,
+  Store,
+  Trophy,
+  Users
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getWeeklyWinReport } from "@/lib/reports/weekly-win";
+import type { WeeklyWinTrend } from "@/lib/reports/types";
 
-export function WeeklyWinReportView() {
-  const report = getWeeklyWinReport();
+const trendIcons: Record<
+  WeeklyWinTrend["icon"],
+  React.ComponentType<{ className?: string }>
+> = {
+  phone: Phone,
+  route: Route,
+  click: MousePointerClick,
+  store: Store,
+  users: Users,
+  megaphone: Megaphone
+};
+
+export async function WeeklyWinReportView() {
+  const report = await getWeeklyWinReport();
+  const badgeVariant =
+    report.mode === "partial_live"
+      ? "success"
+      : report.mode === "guided_connected"
+        ? "outline"
+        : "warning";
+  const badgeLabel =
+    report.mode === "partial_live"
+      ? "Partial live sync"
+      : report.mode === "guided_connected"
+        ? "Connected foundation"
+        : "Setup needed";
 
   return (
     <div className="space-y-5">
@@ -25,9 +59,9 @@ export function WeeklyWinReportView() {
               {report.note}
             </p>
           </div>
-          <Badge variant={report.mode === "sample_connected" ? "success" : "warning"}>
+          <Badge variant={badgeVariant}>
             <Trophy className="mr-1 h-3 w-3" />
-            {report.mode === "sample_connected" ? "Connected sample mode" : "Setup needed"}
+            {badgeLabel}
           </Badge>
         </div>
       </section>
@@ -65,20 +99,17 @@ export function WeeklyWinReportView() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Local Activity Trend</CardTitle>
+            <CardTitle>{report.trendTitle}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Trend icon={Phone} label="Calls" value={report.callsTrend} />
-            <Trend
-              icon={Route}
-              label="Directions"
-              value={report.directionsTrend}
-            />
-            <Trend
-              icon={MousePointerClick}
-              label="Website clicks"
-              value={report.websiteClicksTrend}
-            />
+            {report.trends.map((trend) => (
+              <Trend
+                key={trend.label}
+                icon={trendIcons[trend.icon]}
+                label={trend.label}
+                value={trend.value}
+              />
+            ))}
           </CardContent>
         </Card>
       </section>

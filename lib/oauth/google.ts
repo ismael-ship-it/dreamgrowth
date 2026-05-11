@@ -61,6 +61,35 @@ export async function exchangeGoogleCodeForTokens(code: string) {
   }>;
 }
 
+export async function refreshGoogleAccessToken(refreshToken: string) {
+  const clientId = getRequiredEnv("GOOGLE_CLIENT_ID");
+  const clientSecret = getRequiredEnv("GOOGLE_CLIENT_SECRET");
+
+  const response = await fetch(googleTokenUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token"
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google token refresh failed: ${response.status}`);
+  }
+
+  return response.json() as Promise<{
+    access_token: string;
+    expires_in: number;
+    scope?: string;
+    token_type: string;
+  }>;
+}
+
 export async function fetchGoogleConnectionProfile(accessToken: string) {
   const response = await fetch(googleBusinessAccountsUrl, {
     headers: {
