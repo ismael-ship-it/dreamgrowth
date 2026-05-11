@@ -19,16 +19,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export function GoogleBusinessManager({
   summary,
   connection,
-  syncStatus
+  syncStatus,
+  syncReason
 }: {
   summary: GoogleIntegrationSummary;
   connection: IntegrationConnection;
   syncStatus?: "success" | "failed";
+  syncReason?: string;
 }) {
   const { metrics, reviews, postDrafts } = summary.googleBusiness;
   const accounts = Array.isArray(connection.metadata.accounts)
     ? (connection.metadata.accounts as Array<{ name?: string }>)
     : [];
+  const syncFailureMessage = getGoogleSyncFailureMessage(syncReason);
 
   return (
     <div className="space-y-5">
@@ -62,7 +65,7 @@ export function GoogleBusinessManager({
         >
           {syncStatus === "success"
             ? "Google sync completed. The page is now using the latest live Google Business snapshot available to DreamGrowth."
-            : "Google sync failed. Reconnect the account or check whether the Google Business APIs are enabled for this OAuth app."}
+            : syncFailureMessage}
         </div>
       ) : null}
 
@@ -216,6 +219,23 @@ export function GoogleBusinessManager({
       ) : null}
     </div>
   );
+}
+
+function getGoogleSyncFailureMessage(reason?: string) {
+  switch (reason) {
+    case "refresh_token_missing":
+      return "Google sync failed because the stored refresh token is missing. Reconnect Google in Settings, then run sync again.";
+    case "token_expired":
+      return "Google sync failed because the Google access token is no longer valid. Reconnect Google in Settings and try sync again.";
+    case "api_forbidden":
+      return "Google sync failed because this OAuth app can connect, but it still does not have permission to read the Google Business data needed for sync. Check that Business Profile APIs are enabled and that this account has access to the listing.";
+    case "api_not_enabled":
+      return "Google sync failed because one of the Google Business APIs is not enabled for this OAuth app yet. Enable the Business Profile APIs in Google Cloud, then try again.";
+    case "rate_limited":
+      return "Google sync hit a Google rate limit. Wait a minute, then run sync again.";
+    default:
+      return "Google sync failed. Reconnect the account or check whether the Google Business APIs are enabled for this OAuth app.";
+  }
 }
 
 function EmptyMessage({ text }: { text: string }) {

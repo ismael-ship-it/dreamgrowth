@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buildAppUrl } from "@/lib/http/app-url";
 import { getMetaOAuthUrl } from "@/lib/oauth/meta";
 import { createOAuthState } from "@/lib/oauth/state";
 
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
     return response;
   } catch {
     return NextResponse.redirect(
-      new URL("/settings?meta=setup_required", request.url)
+      buildAppUrl(request, "/settings?meta=setup_required")
     );
   }
 }

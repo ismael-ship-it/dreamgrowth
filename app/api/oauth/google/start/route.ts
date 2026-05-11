@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buildAppUrl } from "@/lib/http/app-url";
 import { getGoogleOAuthUrl } from "@/lib/oauth/google";
 import { createOAuthState } from "@/lib/oauth/state";
 
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
     return response;
   } catch {
     return NextResponse.redirect(
-      new URL("/settings?google=setup_required", request.url)
+      buildAppUrl(request, "/settings?google=setup_required")
     );
   }
 }

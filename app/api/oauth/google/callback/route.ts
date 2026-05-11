@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buildAppUrl } from "@/lib/http/app-url";
 import { saveIntegrationConnection } from "@/lib/integrations/store";
 import {
   exchangeGoogleCodeForTokens,
@@ -15,15 +16,11 @@ export async function GET(request: Request) {
     ?.match(/dreamgrowth_google_oauth_state=([^;]+)/)?.[1];
 
   if (!code || !state || !cookieState || state !== cookieState) {
-    return NextResponse.redirect(
-      new URL("/settings?google=oauth_error", request.url)
-    );
+    return NextResponse.redirect(buildAppUrl(request, "/settings?google=oauth_error"));
   }
 
   if (parseOAuthState(state)?.provider !== "google") {
-    return NextResponse.redirect(
-      new URL("/settings?google=invalid_state", request.url)
-    );
+    return NextResponse.redirect(buildAppUrl(request, "/settings?google=invalid_state"));
   }
 
   try {
@@ -56,7 +53,7 @@ export async function GET(request: Request) {
     });
 
     const response = NextResponse.redirect(
-      new URL("/settings?google=connected", request.url)
+      buildAppUrl(request, "/settings?google=connected")
     );
 
     response.cookies.set("dreamgrowth_google_oauth_state", "", {
@@ -70,7 +67,7 @@ export async function GET(request: Request) {
     return response;
   } catch {
     return NextResponse.redirect(
-      new URL("/settings?google=token_exchange_failed", request.url)
+      buildAppUrl(request, "/settings?google=token_exchange_failed")
     );
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buildAppUrl } from "@/lib/http/app-url";
 import { saveIntegrationConnection } from "@/lib/integrations/store";
 import {
   exchangeMetaCodeForToken,
@@ -17,15 +18,11 @@ export async function GET(request: Request) {
     ?.match(/dreamgrowth_meta_oauth_state=([^;]+)/)?.[1];
 
   if (!code || !state || !cookieState || state !== cookieState) {
-    return NextResponse.redirect(
-      new URL("/settings?meta=oauth_error", request.url)
-    );
+    return NextResponse.redirect(buildAppUrl(request, "/settings?meta=oauth_error"));
   }
 
   if (parseOAuthState(state)?.provider !== "meta") {
-    return NextResponse.redirect(
-      new URL("/settings?meta=invalid_state", request.url)
-    );
+    return NextResponse.redirect(buildAppUrl(request, "/settings?meta=invalid_state"));
   }
 
   try {
@@ -57,7 +54,7 @@ export async function GET(request: Request) {
     });
 
     const response = NextResponse.redirect(
-      new URL("/settings?meta=connected", request.url)
+      buildAppUrl(request, "/settings?meta=connected")
     );
 
     response.cookies.set("dreamgrowth_meta_oauth_state", "", {
@@ -71,7 +68,7 @@ export async function GET(request: Request) {
     return response;
   } catch {
     return NextResponse.redirect(
-      new URL("/settings?meta=token_exchange_failed", request.url)
+      buildAppUrl(request, "/settings?meta=token_exchange_failed")
     );
   }
 }

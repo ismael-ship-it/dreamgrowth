@@ -20,6 +20,7 @@ export default async function GoogleBusinessPage({
       summary={summary}
       connection={connection}
       syncStatus={typeof params.sync === "string" ? (params.sync as "success" | "failed") : undefined}
+      syncReason={typeof params.reason === "string" ? params.reason : undefined}
     />
   );
 }
