@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 42 24% 96%;
+  --foreground: 140 11% 14%;
+  --card: 0 0% 100%;
+  --card-foreground: 140 11% 14%;
+  --primary: 142 38% 24%;
+  --primary-foreground: 42 24% 96%;
+  --secondary: 31 28% 88%;
+  --secondary-foreground: 140 11% 14%;
+  --muted: 40 20% 91%;
+  --muted-foreground: 145 7% 39%;
+  --accent: 29 65% 54%;
+  --accent-foreground: 26 64% 28%;
+  --destructive: 0 74% 42%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 36 20% 82%;
+  --input: 36 20% 82%;
+  --ring: 29 65% 54%;
+  --radius: 8px;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  margin: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(244, 240, 231, 0.7)),
+    hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
