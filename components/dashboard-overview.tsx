@@ -1,160 +1,157 @@
+import Link from "next/link";
 import {
   ArrowRight,
-  Bot,
   Cable,
-  Lock,
-  Megaphone,
-  Sparkles,
-  Store,
-  Workflow
+  ClipboardCheck,
+  RefreshCw,
+  type LucideIcon
 } from "lucide-react";
-import Link from "next/link";
 import { getAppReadiness } from "@/lib/app-readiness";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type SetupTask = {
+type StepState = "complete" | "active" | "waiting";
+
+type MissionStep = {
   title: string;
-  reason: string;
-  badge: string;
-  badgeVariant: "success" | "warning" | "outline";
+  summary: string;
+  detail: string;
+  status: string;
+  state: StepState;
+  badgeVariant: "default" | "success" | "warning" | "outline";
   href: string;
   cta: string;
   ctaVariant: "default" | "outline";
+  icon: LucideIcon;
 };
 
 export function DashboardOverview() {
   const readiness = getAppReadiness();
   const googleLiveSync = Boolean(readiness.google.metadata.liveSync);
-  const metaLiveSync = Boolean(readiness.meta.metadata.liveSync);
-  const googleState = summarizeProvider(
-    readiness.google.isConnected,
-    readiness.googleCredentialsReady,
-    readiness.google.displayName
-  );
-  const metaState = summarizeProvider(
-    readiness.meta.isConnected,
-    readiness.metaCredentialsReady,
-    readiness.meta.displayName
-  );
-  const setupTasks = buildSetupTasks(readiness);
-  const heroTitle = buildHeroTitle(readiness, googleLiveSync, metaLiveSync);
-  const heroBody = buildHeroBody(readiness, googleLiveSync, metaLiveSync);
-  const liveSyncCount = [googleLiveSync, metaLiveSync].filter(Boolean).length;
-  const stats = [
+  const steps = buildMissionSteps(readiness);
+  const nextStep = steps.find((step) => step.state === "active") ?? steps[2];
+  const completedCount = steps.filter((step) => step.state === "complete").length;
+  const todayLabel = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric"
+  }).format(new Date());
+  const statusRows = [
     {
-      label: "Google",
-      value: googleState.value,
-      detail: googleState.detail,
-      icon: Store
+      label: "Google connection",
+      value: readiness.google.isConnected
+        ? readiness.google.displayName ?? "Connected"
+        : "Not connected"
     },
     {
-      label: "Meta",
-      value: metaState.value,
-      detail: metaState.detail,
-      icon: Megaphone
+      label: "Live foundation",
+      value: googleLiveSync
+        ? "Accounts, locations, and reviews synced"
+        : "First sync still pending"
     },
     {
-      label: "AI",
-      value: readiness.aiReady ? "Ready" : "Needs key",
-      detail: `${readiness.aiProvider} provider`,
-      icon: Bot
-    },
-    {
-      label: "Owner Access",
-      value: readiness.appProtected ? "Protected" : "Open",
-      detail: readiness.appProtected
-        ? "password gate active"
-        : "set app password before deployment",
-      icon: Lock
-    },
-    {
-      label: "Workflow",
-      value:
-        readiness.google.isConnected || readiness.meta.isConnected
-          ? "Operable"
-          : "Setup",
-      detail:
-        googleLiveSync || metaLiveSync
-          ? "sync snapshots persist locally"
-          : readiness.google.isConnected || readiness.meta.isConnected
-            ? "connections persist locally"
-          : "connect Google first",
-      icon: Workflow
-    },
-    {
-      label: "Data Mode",
-      value:
-        liveSyncCount > 0
-          ? "Partial live"
-          : readiness.google.isConnected || readiness.meta.isConnected
-            ? "Connected base"
-            : "Setup",
-      detail:
-        liveSyncCount === 2
-          ? "Google + Meta live foundations"
-          : googleLiveSync
-            ? "Google Business live, more next"
-            : metaLiveSync
-              ? "Meta structure live, more next"
-              : readiness.google.isConnected || readiness.meta.isConnected
-                ? "first live sync still pending"
-                : "connect a platform first",
-      icon: Sparkles
+      label: "First action lane",
+      value: googleLiveSync
+        ? "Ready inside Google Business"
+        : "Unlocks after the first sync"
     }
   ];
 
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-border bg-card p-5 shadow-soft sm:p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <section className="rounded-xl border border-border bg-card p-5 shadow-soft sm:p-6">
+        <div className="grid gap-5 lg:grid-cols-[1.4fr_320px] lg:items-start">
           <div>
             <p className="text-sm font-bold text-accent-foreground">
-              Monday, May 11
+              {todayLabel}
             </p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
-              {heroTitle}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Badge variant="success">Focus: Google Business Operator</Badge>
+              <Badge variant={googleLiveSync ? "success" : "outline"}>
+                {googleLiveSync ? "Live foundation on" : "Live foundation pending"}
+              </Badge>
+            </div>
+            <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
+              Mission Control
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              {heroBody}
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+              {buildHeroBody(readiness, googleLiveSync)}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild>
-              <Link href="/connect">
-                Connect Accounts
-                <Cable className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/daily-stack">
-                Open Stack
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
+
+          <Card className="border-border/70 bg-background/60 shadow-none">
+            <CardContent className="p-5">
+              <div className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                Next move
+              </div>
+              <div className="mt-2 text-xl font-black">{nextStep.title}</div>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {nextStep.summary}
+              </p>
+              <Button
+                asChild
+                className="mt-4 w-full justify-between"
+                variant={nextStep.ctaVariant}
+              >
+                <Link href={nextStep.href}>
+                  <span>{nextStep.cta}</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <div className="mt-4 rounded-lg bg-muted p-3">
+                <div className="text-xs font-bold uppercase text-muted-foreground">
+                  Progress
+                </div>
+                <div className="mt-1 text-sm font-semibold">
+                  {completedCount} of 3 steps completed
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-        {stats.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-xs font-bold uppercase text-muted-foreground">
-                    {stat.label}
-                  </div>
-                  <div className="mt-2 text-2xl font-black">{stat.value}</div>
-                  <div className="mt-1 text-xs font-medium text-muted-foreground">
-                    {stat.detail}
-                  </div>
+      <section className="grid gap-4 xl:grid-cols-3">
+        {steps.map((step, index) => (
+          <Card key={step.title} className={getStepCardClasses(step.state)}>
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className={getStepIndexClasses(step.state)}>
+                  0{index + 1}
                 </div>
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted">
-                  <stat.icon className="h-5 w-5 text-accent-foreground" />
+                <Badge variant={step.badgeVariant}>{step.status}</Badge>
+              </div>
+
+              <div className="mt-4 flex items-start gap-3">
+                <div className={getStepIconClasses(step.state)}>
+                  <step.icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black tracking-tight">
+                    {step.title}
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {step.summary}
+                  </p>
                 </div>
               </div>
+
+              <p className="mt-4 text-xs font-semibold leading-5 text-muted-foreground">
+                {step.detail}
+              </p>
+
+              <Button
+                asChild
+                className="mt-5 w-full justify-between"
+                variant={step.ctaVariant}
+              >
+                <Link href={step.href}>
+                  <span>{step.cta}</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
             </CardContent>
           </Card>
         ))}
@@ -163,26 +160,18 @@ export function DashboardOverview() {
       <section className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader>
-            <CardTitle>Next Best Actions</CardTitle>
+            <CardTitle>Operator Status</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {setupTasks.map((task) => (
-              <div key={task.title} className="rounded-md border border-border p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-sm font-bold">{task.title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {task.reason}
-                    </p>
-                  </div>
-                  <Badge variant={task.badgeVariant}>{task.badge}</Badge>
+            {statusRows.map((row) => (
+              <div
+                key={row.label}
+                className="rounded-lg border border-border bg-background/70 p-4"
+              >
+                <div className="text-xs font-bold uppercase text-muted-foreground">
+                  {row.label}
                 </div>
-                <Button asChild className="mt-4" size="sm" variant={task.ctaVariant}>
-                  <Link href={task.href}>
-                    {task.cta}
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
+                <div className="mt-2 text-sm font-semibold">{row.value}</div>
               </div>
             ))}
           </CardContent>
@@ -190,21 +179,18 @@ export function DashboardOverview() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
+            <CardTitle>Hidden Until Stable</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link href="/connect">Check integrations</Link>
-            </Button>
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link href="/daily-stack">Run today's stack</Link>
-            </Button>
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link href="/growth-chat">Ask Growth Chat</Link>
-            </Button>
-            <Button asChild className="w-full justify-start" variant="outline">
-              <Link href="/weekly-report">Open weekly report</Link>
-            </Button>
+          <CardContent className="space-y-3">
+            <p className="text-sm leading-6 text-muted-foreground">
+              Google Ads, Meta, content, media, calendar, and reporting stay out
+              of the primary navigation until the Google connect-sync-review loop
+              feels solid with real data.
+            </p>
+            <div className="rounded-lg border border-dashed border-border bg-muted/60 p-4 text-sm font-semibold leading-6">
+              Narrow scope now. Reopen more modules only after the first Google
+              Business action is easy to trust and approve.
+            </div>
           </CardContent>
         </Card>
       </section>
@@ -212,174 +198,179 @@ export function DashboardOverview() {
   );
 }
 
-function summarizeProvider(
-  connected: boolean,
-  credentialsReady: boolean,
-  displayName: string | null
-) {
-  if (connected) {
-    return {
-      value: "Connected",
-      detail: displayName ?? "account linked"
-    };
-  }
-
-  if (credentialsReady) {
-    return {
-      value: "Ready",
-      detail: "credentials saved, waiting for OAuth"
-    };
-  }
-
-  return {
-    value: "Setup",
-    detail: "credentials missing"
-  };
-}
-
-function buildHeroTitle(
-  readiness: ReturnType<typeof getAppReadiness>,
-  googleLiveSync: boolean,
-  metaLiveSync: boolean
-) {
-  if (!readiness.google.isConnected) {
-    return "Connect Google first";
-  }
-
-  if (!googleLiveSync) {
-    return "Run your first live Google sync";
-  }
-
-  if (!readiness.aiReady) {
-    return "Add your AI key to unlock the operator";
-  }
-
-  if (readiness.meta.isConnected && !metaLiveSync) {
-    return "Finish the live Meta foundation";
-  }
-
-  return "DreamGrowth is ready for operator work";
-}
-
 function buildHeroBody(
   readiness: ReturnType<typeof getAppReadiness>,
-  googleLiveSync: boolean,
-  metaLiveSync: boolean
+  googleLiveSync: boolean
 ) {
   if (!readiness.google.isConnected) {
-    return "Google is the highest-value first connection because it unlocks reviews, Google Business signals, search terms, and the strongest local-intent visibility inputs.";
+    return "DreamGrowth is intentionally narrowed to one mission: connect the owner Google account first, because that is the fastest path to real local-intent data and the cleanest first operator loop.";
   }
 
   if (!googleLiveSync) {
-    return "Google is connected, but the first live snapshot still needs to run. Open the Google Business page and sync once so DreamGrowth can store real locations, reviews, and account context.";
+    return "Google is already connected. Run one live sync next so DreamGrowth can store real Business accounts, locations, reviews, and the first reviewable actions in one place.";
   }
 
-  if (!readiness.aiReady) {
-    return "Your account connections are coming together. Add the AI key next so Daily Stack and Growth Chat can produce ranked actions instead of falling back to local defaults.";
-  }
-
-  if (readiness.meta.isConnected && !metaLiveSync) {
-    return "Google is already syncing live. Run Meta sync next so Pages, Instagram accounts, and ad accounts become part of the same operator workspace.";
-  }
-
-  return "Owner access, persistent connections, and the first live sync foundation are in place. The next layer is replacing guided Ads, GA4, Search Console, and Meta lead reporting with live data.";
+  return "The live Google foundation is in place. Review the first response or post draft inside Google Business, keep the workflow tight, and only then reopen broader surfaces.";
 }
 
-function buildSetupTasks(readiness: ReturnType<typeof getAppReadiness>) {
-  const tasks: SetupTask[] = [];
+function buildMissionSteps(readiness: ReturnType<typeof getAppReadiness>) {
+  const googleConnected = readiness.google.isConnected;
   const googleLiveSync = Boolean(readiness.google.metadata.liveSync);
-  const metaLiveSync = Boolean(readiness.meta.metadata.liveSync);
+  const googleDisplayName = readiness.google.displayName ?? "Google owner account";
 
-  if (!readiness.google.isConnected) {
-    tasks.push({
-      title: "Connect Google",
-      reason: readiness.googleCredentialsReady
-        ? "The Google OAuth credentials are already saved. One connect flow will make the app remember the account locally."
-        : "Google is still missing OAuth credentials, so the app cannot read reviews, ads, GA4, or Search Console yet.",
-      badge: readiness.googleCredentialsReady ? "Highest value" : "Setup needed",
-      badgeVariant: readiness.googleCredentialsReady ? "success" : "warning",
-      href: "/connect",
-      cta: readiness.googleCredentialsReady ? "Connect Google now" : "Open setup",
-      ctaVariant: "default" as const
-    });
+  const steps: MissionStep[] = [
+    googleConnected
+      ? {
+          title: "Connect Google",
+          summary: `Connected as ${googleDisplayName}. DreamGrowth can already remember this owner account between sessions.`,
+          detail:
+            "This is the highest-value foundation because it unlocks locations, reviews, and local search signals first.",
+          status: "Complete",
+          state: "complete",
+          badgeVariant: "success",
+          href: "/connect",
+          cta: "Review connection",
+          ctaVariant: "outline",
+          icon: Cable
+        }
+      : {
+          title: "Connect Google",
+          summary: readiness.googleCredentialsReady
+            ? "The OAuth credentials are ready. Complete the owner connect flow to unlock real Google Business accounts, locations, and reviews."
+            : "Google OAuth credentials still need setup before the owner account can be connected.",
+          detail: readiness.googleCredentialsReady
+            ? "This is the only connection the operator needs first."
+            : "Until credentials exist, the Google operator lane stays blocked.",
+          status: readiness.googleCredentialsReady ? "Ready now" : "Setup required",
+          state: "active",
+          badgeVariant: readiness.googleCredentialsReady ? "outline" : "warning",
+          href: "/connect",
+          cta: readiness.googleCredentialsReady
+            ? "Connect Google now"
+            : "Open Google setup",
+          ctaVariant: "default",
+          icon: Cable
+        },
+    googleLiveSync
+      ? {
+          title: "Run first sync",
+          summary:
+            "The first live Google snapshot is already stored. Accounts, locations, and reviews can now feed the operator workspace.",
+          detail:
+            "DreamGrowth should now treat Google Business as a live foundation, not a guided placeholder.",
+          status: "Complete",
+          state: "complete",
+          badgeVariant: "success",
+          href: "/google-business",
+          cta: "Open Google Business",
+          ctaVariant: "outline",
+          icon: RefreshCw
+        }
+      : googleConnected
+        ? {
+            title: "Run first sync",
+            summary:
+              "Google is connected. Run one live sync to pull Business accounts, locations, and reviews into DreamGrowth.",
+            detail:
+              "This is the move that takes the workspace from setup mode to real Google data.",
+            status: "Next step",
+            state: "active",
+            badgeVariant: "default",
+            href: "/google-business",
+            cta: "Run first sync",
+            ctaVariant: "default",
+            icon: RefreshCw
+          }
+        : {
+            title: "Run first sync",
+            summary:
+              "The sync button unlocks right after Google is connected.",
+            detail: "No live Google data is stored yet.",
+            status: "Blocked",
+            state: "waiting",
+            badgeVariant: "outline",
+            href: "/google-business",
+            cta: "View Google workspace",
+            ctaVariant: "outline",
+            icon: RefreshCw
+          },
+    googleLiveSync
+      ? {
+          title: "Review first action",
+          summary:
+            "Open Google Business and review the first response draft or post draft created from live Google data.",
+          detail:
+            "Keep the first operator loop tight before reopening broader modules.",
+          status: "Ready for review",
+          state: "active",
+          badgeVariant: "default",
+          href: "/google-business",
+          cta: "Review first action",
+          ctaVariant: "default",
+          icon: ClipboardCheck
+        }
+      : googleConnected
+        ? {
+            title: "Review first action",
+            summary:
+              "The first reviewable action appears immediately after the first live sync succeeds.",
+            detail:
+              "This step stays on hold until the operator has real Google data to work from.",
+            status: "Waiting on sync",
+            state: "waiting",
+            badgeVariant: "outline",
+            href: "/google-business",
+            cta: "Open Google workspace",
+            ctaVariant: "outline",
+            icon: ClipboardCheck
+          }
+        : {
+            title: "Review first action",
+            summary:
+              "DreamGrowth only surfaces the first action after Google is connected and synced once.",
+            detail:
+              "No extra branches yet, just the first operator win from Google Business.",
+            status: "Blocked",
+            state: "waiting",
+            badgeVariant: "outline",
+            href: "/dashboard",
+            cta: "Stay in Mission Control",
+            ctaVariant: "outline",
+            icon: ClipboardCheck
+          }
+  ];
+
+  return steps;
+}
+
+function getStepCardClasses(state: StepState) {
+  if (state === "complete") {
+    return "border-emerald-200 bg-emerald-50/40";
   }
 
-  if (readiness.google.isConnected && !googleLiveSync) {
-    tasks.push({
-      title: "Run the first Google sync",
-      reason:
-        "Your Google connection is saved. Sync once to pull real Business accounts, locations, and reviews into DreamGrowth.",
-      badge: "Live data",
-      badgeVariant: "success" as const,
-      href: "/google-business",
-      cta: "Open Google sync",
-      ctaVariant: "default" as const
-    });
+  if (state === "active") {
+    return "border-primary/40 bg-primary/5";
   }
 
-  if (!readiness.aiReady) {
-    tasks.push({
-      title: "Finish the AI setup",
-      reason: `DreamGrowth is configured to use ${readiness.aiProvider}, but the API key is still missing.`,
-      badge: "Blocking",
-      badgeVariant: "warning" as const,
-      href: "/settings",
-      cta: "Open Admin Setup",
-      ctaVariant: "outline" as const
-    });
-  }
+  return "";
+}
 
-  if (readiness.meta.isConnected && !metaLiveSync) {
-    tasks.push({
-      title: "Run the first Meta sync",
-      reason:
-        "Meta is already connected. Sync once to save live Pages, Instagram accounts, and ad accounts for the operator workspace.",
-      badge: "Live data",
-      badgeVariant: "success" as const,
-      href: "/meta",
-      cta: "Open Meta sync",
-      ctaVariant: "outline" as const
-    });
-  }
+function getStepIndexClasses(state: StepState) {
+  return cn(
+    "flex h-10 w-10 items-center justify-center rounded-full text-sm font-black",
+    state === "complete" &&
+      "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200",
+    state === "active" &&
+      "bg-primary text-primary-foreground ring-1 ring-primary/20",
+    state === "waiting" && "bg-muted text-muted-foreground"
+  );
+}
 
-  if (!readiness.meta.isConnected) {
-    tasks.push({
-      title: "Connect Meta when you are ready",
-      reason: readiness.metaCredentialsReady
-        ? "Meta is optional, but connecting it will make Facebook, Instagram, and lead workflows persistent too."
-        : "Meta is optional for now. Save the app credentials later if you want social and lead workflows.",
-      badge: "Optional",
-      badgeVariant: "outline" as const,
-      href: "/connect",
-      cta: "Review Meta setup",
-      ctaVariant: "outline" as const
-    });
-  }
-
-  if (!readiness.appProtected) {
-    tasks.push({
-      title: "Lock the app before public deployment",
-      reason: "The dev dashboard is still open if someone knows the URL. Set DREAMGROWTH_APP_PASSWORD before you publish it anywhere public.",
-      badge: "Security",
-      badgeVariant: "warning" as const,
-      href: "/settings",
-      cta: "Review setup notes",
-      ctaVariant: "outline" as const
-    });
-  }
-
-  if (tasks.length === 0) {
-    tasks.push({
-      title: "Run today's Daily Stack",
-      reason:
-        "The core setup and live sync foundation are in place. Use Daily Stack to pressure-test the operator workflow and decide the next high-impact action.",
-      badge: "Ready",
-      badgeVariant: "success" as const,
-      href: "/daily-stack",
-      cta: "Open Daily Stack",
-      ctaVariant: "default" as const
-    });
-  }
-
-  return tasks.slice(0, 4);
+function getStepIconClasses(state: StepState) {
+  return cn(
+    "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg",
+    state === "complete" && "bg-emerald-100 text-emerald-800",
+    state === "active" && "bg-primary text-primary-foreground",
+    state === "waiting" && "bg-muted text-muted-foreground"
+  );
 }

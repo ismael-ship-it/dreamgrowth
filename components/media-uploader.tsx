@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Camera,
   CheckCircle2,
+  Clock3,
   ImagePlus,
   Link2,
   Loader2,
@@ -14,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { MediaUploadRecord } from "@/lib/media/types";
 
 const materialOptions = ["Quartz", "Granite", "Marble", "Quartzite", "Dekton", "Neolith"];
 const serviceOptions = [
@@ -50,12 +52,39 @@ export function MediaUploader({
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [message, setMessage] = useState("");
+  const [recentUploads, setRecentUploads] = useState<MediaUploadRecord[]>([]);
+  const [loadingUploads, setLoadingUploads] = useState(true);
 
   const mobileUploadUrl = useMemo(() => {
     if (typeof window === "undefined") return "/media/mobile-upload";
     return `${window.location.origin}/media/mobile-upload`;
   }, []);
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(mobileUploadUrl)}`;
+
+  useEffect(() => {
+    async function loadUploads() {
+      try {
+        const response = await fetch("/api/media/uploads", {
+          cache: "no-store"
+        });
+
+        if (!response.ok) {
+          throw new Error("Could not load uploads");
+        }
+
+        const result = (await response.json()) as {
+          uploads?: MediaUploadRecord[];
+        };
+        setRecentUploads(result.uploads ?? []);
+      } catch {
+        setRecentUploads([]);
+      } finally {
+        setLoadingUploads(false);
+      }
+    }
+
+    void loadUploads();
+  }, []);
 
   async function submitUpload() {
     setStatus("uploading");
@@ -88,6 +117,18 @@ export function MediaUploader({
       const result = (await response.json()) as { uploads: unknown[] };
       setStatus("uploaded");
       setMessage(`${result.uploads.length} photo record(s) added to DreamGrowth.`);
+      const uploadsResponse = await fetch("/api/media/uploads", {
+        cache: "no-store"
+      });
+
+      if (uploadsResponse.ok) {
+        const uploadsResult = (await uploadsResponse.json()) as {
+          uploads?: MediaUploadRecord[];
+        };
+        setRecentUploads(uploadsResult.uploads ?? []);
+      }
+      setFiles([]);
+      setNotes("");
     } catch {
       setStatus("error");
       setMessage("Could not register the upload. Check required fields and try again.");
@@ -110,7 +151,7 @@ export function MediaUploader({
               DreamGrowth can turn them into local post drafts.
             </p>
           </div>
-          <Badge variant="warning">Storage mock mode</Badge>
+          <Badge variant="success">Local media library ready</Badge>
         </div>
       </section>
 
@@ -250,6 +291,55 @@ export function MediaUploader({
           </Card>
         ) : null}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock3 className="h-5 w-5 text-accent-foreground" />
+            Recent Project Uploads
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingUploads ? (
+            <div className="text-sm font-semibold text-muted-foreground">
+              Loading recent uploads...
+            </div>
+          ) : recentUploads.length ? (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {recentUploads.slice(0, 9).map((upload) => (
+                <div
+                  key={upload.id}
+                  className="rounded-lg border border-border bg-background p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="truncate text-sm font-bold">
+                      {upload.fileName}
+                    </div>
+                    <Badge variant="outline">{upload.materialType}</Badge>
+                  </div>
+                  <div className="mt-3 space-y-1 text-xs font-semibold text-muted-foreground">
+                    <div>
+                      {upload.serviceType} in {upload.city}, {upload.state}
+                    </div>
+                    <div>
+                      Added {new Date(upload.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric"
+                      })}
+                    </div>
+                    {upload.notes ? <div>{upload.notes}</div> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-md border border-dashed border-border p-4 text-sm font-semibold text-muted-foreground">
+              No project photos have been added yet. Upload the first completed job
+              so DreamGrowth can build post drafts around real work.
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

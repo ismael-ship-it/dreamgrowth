@@ -157,12 +157,16 @@ export function GoogleBusinessManager({
                         {review.responseDraft}
                       </p>
                       <div className="mt-4 flex flex-wrap gap-2">
-                        <Button size="sm">
-                          <MessageSquareText className="h-4 w-4" />
-                          Approve Reply
+                        <Button asChild size="sm">
+                          <Link href="/reviews">
+                            <MessageSquareText className="h-4 w-4" />
+                            Open Reviews Workflow
+                          </Link>
                         </Button>
-                        <Button size="sm" variant="outline">
-                          Edit
+                        <Button asChild size="sm" variant="outline">
+                          <Link href="/growth-chat">
+                            Refine in Growth Chat
+                          </Link>
                         </Button>
                       </div>
                     </div>
@@ -189,8 +193,8 @@ export function GoogleBusinessManager({
                       <p className="mt-3 text-xs font-semibold text-muted-foreground">
                         Source: {post.sourcePhoto}
                       </p>
-                      <Button className="mt-4" size="sm">
-                        Approve Post
+                      <Button asChild className="mt-4" size="sm">
+                        <Link href="/content">Open Content Workflow</Link>
                       </Button>
                     </div>
                   ))

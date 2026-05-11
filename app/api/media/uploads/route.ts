@@ -26,6 +26,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     uploads: createMediaUploadRecords(payload),
     note:
-      "Mock upload registered. Replace this endpoint with Supabase Storage upload when Supabase credentials are configured."
+      "Upload registered locally for DreamGrowth. Add cloud storage later if you want shared access across devices."
   });
 }
