@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, EyeOff, Loader2, Save, Settings2 } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  EyeOff,
+  Loader2,
+  Save,
+  Settings2
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,7 +58,7 @@ const sections: Array<{
   },
   {
     title: "Google",
-    description: "Required for Google Business Profile, Ads, GA4, and Search Console.",
+    description: "One-time credentials used behind Google Business Profile, Ads, GA4, and Search Console.",
     fields: [
       {
         key: "GOOGLE_CLIENT_ID",
@@ -67,7 +74,7 @@ const sections: Array<{
       {
         key: "GOOGLE_REDIRECT_URI",
         label: "Google Redirect URL",
-        placeholder: "http://localhost:3000/api/oauth/google/callback"
+        placeholder: "https://your-app-url/api/oauth/google/callback"
       },
       {
         key: "GOOGLE_ADS_DEVELOPER_TOKEN",
@@ -117,7 +124,7 @@ const sections: Array<{
   },
   {
     title: "Meta",
-    description: "Use after Google is working: Facebook, Instagram, Meta Ads, leads.",
+    description: "One-time credentials used behind Facebook, Instagram, Meta Ads, and lead sync.",
     fields: [
       {
         key: "META_APP_ID",
@@ -133,7 +140,7 @@ const sections: Array<{
       {
         key: "META_REDIRECT_URI",
         label: "Meta Redirect URL",
-        placeholder: "http://localhost:3000/api/oauth/meta/callback"
+        placeholder: "https://your-app-url/api/oauth/meta/callback"
       }
     ]
   }
@@ -142,8 +149,6 @@ const sections: Array<{
 export function AdminSetupForm() {
   const [status, setStatus] = useState<EnvStatus | null>(null);
   const [form, setForm] = useState<FormState>({
-    GOOGLE_REDIRECT_URI: "http://localhost:3000/api/oauth/google/callback",
-    META_REDIRECT_URI: "http://localhost:3000/api/oauth/meta/callback",
     AI_PROVIDER: "gemini",
     GEMINI_MODEL: "gemini-2.5-flash",
     OPENAI_MODEL: "gpt-4o"
@@ -153,6 +158,22 @@ export function AdminSetupForm() {
 
   useEffect(() => {
     void loadStatus();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const origin = window.location.origin;
+
+    setForm((current) => ({
+      ...current,
+      GOOGLE_REDIRECT_URI:
+        current.GOOGLE_REDIRECT_URI ?? `${origin}/api/oauth/google/callback`,
+      META_REDIRECT_URI:
+        current.META_REDIRECT_URI ?? `${origin}/api/oauth/meta/callback`
+    }));
   }, []);
 
   async function loadStatus() {
@@ -185,69 +206,104 @@ export function AdminSetupForm() {
   }
 
   return (
-    <Card>
+    <Card id="advanced-setup">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Settings2 className="h-5 w-5 text-accent-foreground" />
-          Admin Setup
+          One-Time App Credentials
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="rounded-md bg-muted p-3 text-sm font-semibold leading-6 text-muted-foreground">
-          Paste credentials here once. DreamGrowth saves them locally for this
-          development app, so you do not need to edit code or env files by hand.
+          Most owners should not live in this section. Use it once to save the
+          app credentials behind Google, Meta, and AI, then go back up and
+          finish the real account connection with the buttons above.
         </div>
 
-        {sections.map((section) => (
-          <div key={section.title} className="space-y-3 rounded-lg border border-border p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 className="font-bold">{section.title}</h3>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  {section.description}
-                </p>
+        <details className="rounded-lg border border-border">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
+            <div>
+              <div className="text-sm font-bold">Open advanced setup</div>
+              <div className="mt-1 text-sm leading-6 text-muted-foreground">
+                Best for first-time setup, replacing credentials, or fixing an
+                OAuth redirect issue.
               </div>
-              <Badge variant={sectionReady(section.fields, status) ? "success" : "warning"}>
-                {sectionReady(section.fields, status) ? "Configured" : "Needs setup"}
-              </Badge>
             </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {section.fields.map((field) => (
-                <label key={field.key} className="block">
-                  <span className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
-                    {field.label}
-                    {status?.[field.key]?.configured ? (
-                      <span className="inline-flex items-center gap-1 normal-case text-accent-foreground">
-                        <CheckCircle2 className="h-3 w-3" />
-                        {status[field.key].preview}
-                      </span>
-                    ) : null}
-                  </span>
-                  <div className="relative mt-2">
-                    <input
-                      type={field.secret ? "password" : "text"}
-                      value={form[field.key] ?? ""}
-                      placeholder={field.placeholder}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          [field.key]: event.target.value
-                        }))
-                      }
-                      className="h-10 w-full rounded-md border border-input bg-background px-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-ring"
-                    />
-                    {field.secret ? (
-                      <EyeOff className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
-                    ) : null}
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          </summary>
+
+          <div className="space-y-5 border-t border-border p-4">
+            {sections.map((section) => (
+              <div
+                key={section.title}
+                className="space-y-3 rounded-lg border border-border p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold">{section.title}</h3>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      {section.description}
+                    </p>
                   </div>
-                </label>
-              ))}
-            </div>
+                  <Badge
+                    variant={sectionReady(section.fields, status) ? "outline" : "warning"}
+                  >
+                    {sectionReady(section.fields, status)
+                      ? "Credentials saved"
+                      : "Needs setup"}
+                  </Badge>
+                </div>
+                {(section.title === "Google" || section.title === "Meta") &&
+                sectionReady(section.fields, status) ? (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
+                    {section.title} app credentials are saved. This does not mean
+                    the business account is connected yet. Use the connection
+                    card above to finish the real account link.
+                  </div>
+                ) : null}
+                <div className="grid gap-3 md:grid-cols-2">
+                  {section.fields.map((field) => (
+                    <label key={field.key} className="block">
+                      <span className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
+                        {field.label}
+                        {status?.[field.key]?.configured ? (
+                          <span className="inline-flex items-center gap-1 normal-case text-accent-foreground">
+                            <CheckCircle2 className="h-3 w-3" />
+                            {status[field.key].preview}
+                          </span>
+                        ) : null}
+                      </span>
+                      <div className="relative mt-2">
+                        <input
+                          type={field.secret ? "password" : "text"}
+                          value={form[field.key] ?? ""}
+                          placeholder={field.placeholder}
+                          onChange={(event) =>
+                            setForm((current) => ({
+                              ...current,
+                              [field.key]: event.target.value
+                            }))
+                          }
+                          className="h-10 w-full rounded-md border border-input bg-background px-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-ring"
+                        />
+                        {field.secret ? (
+                          <EyeOff className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+                        ) : null}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        </details>
 
         <Button onClick={save} disabled={saving} className="w-full">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {saving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
           Save Setup
         </Button>
 

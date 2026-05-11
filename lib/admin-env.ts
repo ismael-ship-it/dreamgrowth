@@ -64,14 +64,6 @@ export function saveEditableEnv(input: EditableEnvInput) {
     next.GEMINI_MODEL = "gemini-2.5-flash";
   }
 
-  if (!next.GOOGLE_REDIRECT_URI) {
-    next.GOOGLE_REDIRECT_URI = "http://localhost:3000/api/oauth/google/callback";
-  }
-
-  if (!next.META_REDIRECT_URI) {
-    next.META_REDIRECT_URI = "http://localhost:3000/api/oauth/meta/callback";
-  }
-
   writeFileSync(envPath, serializeEnv(next), "utf8");
   return getEditableEnvStatus();
 }

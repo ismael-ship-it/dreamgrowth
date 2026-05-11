@@ -49,6 +49,10 @@ export function IntegrationsSettings({
           activity, ad search terms, and visibility signals. Nothing gets posted
           or changed without your approval.
         </p>
+        <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-muted-foreground">
+          Day-to-day use should happen through connected accounts below. The app
+          credentials section is only a one-time advanced setup layer.
+        </p>
       </section>
 
       <StatusNotice provider="google" code={statusQueries?.google} />
@@ -280,15 +284,23 @@ function UserConnectionCard({
             </div>
           </div>
         ) : credentialsReady ? (
-          <Button asChild className="w-full">
-            <Link href={href}>
-              Connect {title}
-              <ExternalLink className="h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="space-y-3 rounded-md border border-border bg-muted/40 p-3">
+            <div className="text-sm font-bold">App credentials are ready</div>
+            <p className="text-sm leading-6 text-muted-foreground">
+              The technical setup for {title} is already saved. The next step is
+              the real business account connection.
+            </p>
+            <Button asChild className="w-full">
+              <Link href={href}>
+                Connect {title}
+                <ExternalLink className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         ) : (
           <div className="rounded-md bg-muted p-3 text-sm font-semibold leading-6 text-muted-foreground">
-            {setupMessage}
+            {setupMessage} Open the advanced setup section below only if those
+            credentials have not been saved yet.
           </div>
         )}
       </CardContent>
