@@ -1,8 +1,12 @@
-export const dreamStoneworksContext = {
+import type { CompanyProfile } from "@/lib/company/profile";
+
+export const defaultCompanyProfile: CompanyProfile = {
   companyName: "Dream Stoneworks",
   website: "https://www.dreamstoneworks.com",
   phone: "978-300-0762",
   email: "dream@dreamstoneworks.com",
+  primaryCity: "Northborough",
+  primaryState: "MA",
   showroom: "168 Main St, Northborough, MA 01532",
   fabricationShop: "312 Main St, Suite 100, Hudson, MA 01749",
   industry: "Countertop fabrication and installation",

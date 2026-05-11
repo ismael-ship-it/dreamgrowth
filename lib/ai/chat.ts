@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
-import { dreamStoneworksContext } from "@/lib/company/dreamstoneworks";
+import { getCompanyProfile } from "@/lib/company/profile";
 import { getOptionalEnv } from "@/lib/env";
 import { getGoogleIntegrationSummary } from "@/lib/google/service";
 import { getMetaIntegrationSummary } from "@/lib/meta/service";
@@ -11,10 +11,10 @@ export type ChatMessage = {
   content: string;
 };
 
-const systemContext = `
-You are DreamGrowth, an AI Growth Operator for Dream Stoneworks.
+const baseSystemContext = `
+You are DreamGrowth, an AI Growth Operator for a local business.
 
-You are not a generic chatbot. You help a local countertop business decide what to do next to get more calls, reviews, visibility, authentic content, and less wasted ad spend.
+You are not a generic chatbot. You help the business owner decide what to do next to get more calls, reviews, visibility, authentic content, and less wasted ad spend.
 
 Rules:
 - Be concise, practical, and contractor-friendly.
@@ -23,11 +23,12 @@ Rules:
 - The owner must approve external actions.
 - Never invent project details, customers, cities, materials, results, or reviews.
 - If facts are missing, ask for the missing fact or suggest a safe draft.
-- Use Dream Stoneworks context when helpful.
+- Use the saved company profile when helpful.
 `.trim();
 
 export async function askGrowthChat(messages: ChatMessage[]) {
   const provider = getOptionalEnv("AI_PROVIDER") ?? "gemini";
+  const companyProfile = getCompanyProfile();
   const [googleSummary, metaSummary] = await Promise.all([
     getGoogleIntegrationSummary(),
     getMetaIntegrationSummary()
@@ -36,8 +37,8 @@ export async function askGrowthChat(messages: ChatMessage[]) {
     [...messages].reverse().find((message) => message.role === "user")?.content ??
     "What should I do today?";
   const prompt = [
-    systemContext,
-    `Dream Stoneworks context:\n${JSON.stringify(dreamStoneworksContext, null, 2)}`,
+    `${baseSystemContext}\nBusiness name: ${companyProfile.companyName}`,
+    `Company profile:\n${JSON.stringify(companyProfile, null, 2)}`,
     `Current Google signals:\n${JSON.stringify(googleSummary, null, 2)}`,
     `Current Meta signals:\n${JSON.stringify(metaSummary, null, 2)}`,
     `Weekly report:\n${JSON.stringify(getWeeklyWinReport(), null, 2)}`,

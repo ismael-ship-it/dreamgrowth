@@ -1,6 +1,7 @@
 import type * as React from "react";
 import { Camera, CheckCircle2, FileText, MapPin, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { getCompanyProfile } from "@/lib/company/profile";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { projectMediaLibrary } from "@/lib/content/mock-data";
 import { generateDraftsForFirstProject } from "@/lib/content/generator";
 
 export async function AiContentEngine() {
+  const profile = getCompanyProfile();
   const result = await generateDraftsForFirstProject();
   const selectedMedia = projectMediaLibrary[0];
 
@@ -21,8 +23,8 @@ export async function AiContentEngine() {
           Turn real project photos into local posts
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-          DreamGrowth uses uploaded project facts only: city, material, service,
-          and notes. Every post starts as pending approval.
+          DreamGrowth uses uploaded project facts only for {profile.companyName}: city,
+          material, service, and notes. Every post starts as pending approval.
         </p>
         <Button asChild className="mt-4">
           <Link href="/media">Upload project photos</Link>

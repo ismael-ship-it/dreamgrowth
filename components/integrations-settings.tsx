@@ -10,11 +10,13 @@ import {
   Unplug
 } from "lucide-react";
 import Link from "next/link";
+import { getCompanyProfile } from "@/lib/company/profile";
 import { getAppReadiness } from "@/lib/app-readiness";
 import {
   type IntegrationConnection,
   type IntegrationProvider
 } from "@/lib/integrations/store";
+import { CompanyProfileForm } from "@/components/company-profile-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +33,7 @@ export function IntegrationsSettings({
   statusQueries?: StatusQueries;
 }) {
   const readiness = getAppReadiness();
+  const companyProfile = getCompanyProfile();
 
   return (
     <div className="space-y-5">
@@ -138,6 +141,8 @@ export function IntegrationsSettings({
           </div>
         </CardContent>
       </Card>
+
+      <CompanyProfileForm initialProfile={companyProfile} />
 
       <AdminSetupForm />
     </div>

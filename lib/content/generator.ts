@@ -1,4 +1,5 @@
 import { projectMediaLibrary } from "@/lib/content/mock-data";
+import { getCompanyProfile } from "@/lib/company/profile";
 import type {
   ContentGenerationRequest,
   ContentGenerationResult,
@@ -20,8 +21,9 @@ export async function getProjectMediaLibrary() {
 export async function generateContentDrafts(
   request: ContentGenerationRequest
 ): Promise<ContentGenerationResult> {
+  const profile = getCompanyProfile();
   const drafts = request.platforms.map((platform) =>
-    buildDraft(request.media, platform)
+    buildDraft(request.media, platform, profile)
   );
 
   return {
@@ -40,7 +42,8 @@ export async function generateDraftsForFirstProject() {
 
 function buildDraft(
   media: ProjectMediaInput,
-  platform: ContentPlatform
+  platform: ContentPlatform,
+  profile: ReturnType<typeof getCompanyProfile>
 ): GeneratedPostDraft {
   const warnings = validateMediaFacts(media);
   const location = [media.city, media.state].filter(Boolean).join(", ");
@@ -51,11 +54,12 @@ function buildDraft(
   const serviceText = `${materialText}${service}`;
   const noteText = media.notes ? ` ${media.notes}` : "";
 
+  const cta = profile.callsToAction[0] ?? "Contact us";
   const baseSentence = `Recent ${serviceText}${locationText}.`;
   const bodyByPlatform: Record<ContentPlatform, string> = {
-    google_business: `${baseSentence}${noteText} Contact the shop if you are planning a local ${service}.`,
-    facebook: `${baseSentence}${noteText} This is a real project photo from our local work.`,
-    instagram: `${baseSentence}${noteText}`
+    google_business: `${baseSentence}${noteText} ${cta} if you are planning a local ${service}.`,
+    facebook: `${baseSentence}${noteText} This is a real project photo from ${profile.companyName}.`,
+    instagram: `${baseSentence}${noteText} ${cta}.`
   };
   const cleanBody = removeForbiddenPhrases(bodyByPlatform[platform]);
 

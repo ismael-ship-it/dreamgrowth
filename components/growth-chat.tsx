@@ -13,19 +13,27 @@ type Message = {
 
 const quickPrompts = [
   "What should I do today?",
-  "Create a Google post idea for Northborough quartz countertops.",
-  "Give me 5 local content ideas for Worcester County.",
+  "Create a Google post idea for our primary city.",
+  "Give me 5 local content ideas for our service area.",
   "Explain this week's wins in simple language.",
   "What should I check before spending more on ads?",
   "Write a review reply draft for a happy customer."
 ];
 
-export function GrowthChat() {
+export function GrowthChat({
+  companyName,
+  primaryCity,
+  industry
+}: {
+  companyName: string;
+  primaryCity: string;
+  industry: string;
+}) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
       content:
-        "Ask me what to do next for Dream Stoneworks. I can help with reviews, Google Business posts, local SEO, ad waste, project-photo content, and weekly wins."
+        `Ask me what to do next for ${companyName}. I can help with reviews, Google Business posts, local SEO, ad waste, project-photo content, and weekly wins.`
     }
   ]);
   const [input, setInput] = useState("");
@@ -83,7 +91,8 @@ export function GrowthChat() {
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
           Ask for the next action, a local post idea, review reply, ad cleanup,
-          or a simple explanation of what is happening this week.
+          or a simple explanation of what is happening this week for your{" "}
+          {industry.toLowerCase()} business.
         </p>
       </section>
 
@@ -155,9 +164,17 @@ export function GrowthChat() {
                 key={prompt}
                 variant="outline"
                 className="h-auto w-full justify-start whitespace-normal py-3 text-left"
-                onClick={() => void sendMessage(prompt)}
+                onClick={() =>
+                  void sendMessage(
+                    prompt
+                      .replace("our primary city", primaryCity)
+                      .replace("our service area", primaryCity)
+                  )
+                }
               >
-                {prompt}
+                {prompt
+                  .replace("our primary city", primaryCity)
+                  .replace("our service area", primaryCity)}
               </Button>
             ))}
           </CardContent>

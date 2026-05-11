@@ -27,12 +27,26 @@ const serviceOptions = [
 
 type UploadStatus = "idle" | "uploading" | "uploaded" | "error";
 
-export function MediaUploader({ mobile = false }: { mobile?: boolean }) {
+export function MediaUploader({
+  mobile = false,
+  defaults
+}: {
+  mobile?: boolean;
+  defaults?: {
+    primaryCity?: string;
+    primaryState?: string;
+    serviceOptions?: string[];
+  };
+}) {
+  const availableServiceOptions =
+    defaults?.serviceOptions?.length ? defaults.serviceOptions : serviceOptions;
   const [files, setFiles] = useState<File[]>([]);
-  const [city, setCity] = useState("Northborough");
-  const [state, setState] = useState("MA");
+  const [city, setCity] = useState(defaults?.primaryCity ?? "Northborough");
+  const [state, setState] = useState(defaults?.primaryState ?? "MA");
   const [materialType, setMaterialType] = useState("Quartz");
-  const [serviceType, setServiceType] = useState("Countertop installation");
+  const [serviceType, setServiceType] = useState(
+    availableServiceOptions[0] ?? "Countertop installation"
+  );
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<UploadStatus>("idle");
   const [message, setMessage] = useState("");
@@ -159,7 +173,7 @@ export function MediaUploader({ mobile = false }: { mobile?: boolean }) {
                 label="Service"
                 value={serviceType}
                 onChange={setServiceType}
-                options={serviceOptions}
+                options={availableServiceOptions}
               />
             </div>
 

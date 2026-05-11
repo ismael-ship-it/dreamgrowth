@@ -2,11 +2,14 @@ import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoginForm } from "@/components/login-form";
 import { isAppProtectionEnabled } from "@/lib/auth";
+import { getCompanyProfile } from "@/lib/company/profile";
 
 export default function LoginPage() {
   if (!isAppProtectionEnabled()) {
     redirect("/dashboard");
   }
+
+  const profile = getCompanyProfile();
 
   return (
     <main className="min-h-screen bg-background px-4 py-10 text-foreground sm:px-6">
@@ -19,8 +22,8 @@ export default function LoginPage() {
             Lock the app, then run growth from one place
           </h1>
           <p className="max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">
-            DreamGrowth is an internal operator for Dream Stoneworks. Use the owner password to
-            open the dashboard, configure integrations, and work through daily growth actions.
+            DreamGrowth is an internal operator for {profile.companyName}. Use the owner password
+            to open the dashboard, configure integrations, and work through daily growth actions.
           </p>
           <div className="rounded-lg border border-border bg-card p-4 text-sm font-semibold leading-6 text-muted-foreground">
             Tip: set <code>DREAMGROWTH_APP_PASSWORD</code> and <code>DREAMGROWTH_SESSION_SECRET</code> in your environment
@@ -40,4 +43,3 @@ export default function LoginPage() {
     </main>
   );
 }
-
